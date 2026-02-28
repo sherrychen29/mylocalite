@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MyLocalite{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <header class="header">
+        <div class="header-left">
+            <a href="/" class="header-logo-link">
+                <img src="{{ url_for('static', filename='media/logo.png') }}" alt="" class="header-logo" aria-hidden="true">
+            </a>
+            <a href="/" class="header-wordmark">MyLocalite</a>
+        </div>
+        <nav class="header-right" aria-label="Main navigation">
+            <a href="{{ url_for('discover') }}" class="btn btn-discover">
+                <img class="btn-icon" src="{{ url_for('static', filename='media/search.svg') }}" alt="" aria-hidden="true">
+                <span>Discover</span>
+            </a>
+            <a href="/bookmarks" class="btn btn-bookmarks">
+                <img class="btn-icon btn-icon--filled" src="{{ url_for('static', filename='media/bookmark-filled.svg') }}" alt="" aria-hidden="true">
+                <img class="btn-icon btn-icon--outline" src="{{ url_for('static', filename='media/bookmark.svg') }}" alt="" aria-hidden="true">
+                <span>My Bookmarks</span>
+            </a>
+            <button id="openAddBiz" type="button" class="btn btn-add-biz">
+                <img class="btn-icon btn-icon--add-dark" src="{{ url_for('static', filename='media/plus.svg') }}" alt="" aria-hidden="true">
+                <img class="btn-icon btn-icon--add-light" src="{{ url_for('static', filename='media/plus-white.svg') }}" alt="" aria-hidden="true">
+                <span>Add Business</span>
+            </button>
+        </nav>
+    </header>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="hero-footer">
+        <div class="hero-footer-inner">
+            <a href="/" class="hero-footer-wordmark">MyLocalite</a>
+            <p class="hero-footer-tagline">Support local businesses</p>
+            <nav class="hero-footer-nav" aria-label="Footer navigation">
+                <a href="{{ url_for('discover') }}">Discover</a>
+                <a href="/bookmarks">My Bookmarks</a>
+            </nav>
+        </div>
+    </footer>
+
+    <!-- Add Business Modal -->
+    <div id="addBizOverlay" class="modal-overlay" aria-hidden="true">
+        <div class="modal modal--add-biz" role="dialog" aria-modal="true" aria-labelledby="addBizTitle">
+            <div class="modal-header">
+                <h3 id="addBizTitle" class="modal-title">Add a Business</h3>
+                <button id="closeAddBiz" type="button" class="modal-x">✕</button>
+            </div>
+
+            <form method="POST" action="/admin/add_business" class="modal-form">
+                <label>Business name *</label>
+                <input name="name" class="input" placeholder="e.g., Cedar & Stone Pizza" required>
+
+                <label>Category *</label>
+                <select name="category" class="select" required>
+                    <option value="Food">Food</option>
+                    <option value="Retail">Retail</option>
+                    <option value="Services">Services</option>
+                </select>
+
+                <label>Description</label>
+                <input name="description" class="input" placeholder="Short description">
+
+                <label>Address *</label>
+                <input name="address" class="input" placeholder="123 Example St, Toronto, ON" required>
+
+                <label>Hours</label>
+                <input name="hours" class="input" placeholder="e.g., 10am–6pm">
+
+                <label>Phone</label>
+                <input name="phone" class="input" placeholder="e.g., (416) 555-0123">
+
+                <p class="modal-form-note">If you don't know a detail, write "N/A".</p>
+
+                <div class="modal-actions">
+                    <button type="button" id="cancelAddBiz" class="btn btn-view">Cancel</button>
+                    <button type="submit" class="btn">Add</button>
+                </div>
+
+                <p class="muted-small">* required</p>
+            </form>
+        </div>
+    </div>
+    <script>
+        (function() {
+          var overlay = document.getElementById("addBizOverlay");
+          var closeBtn = document.getElementById("closeAddBiz");
+          var cancelBtn = document.getElementById("cancelAddBiz");
+
+          function openModal() {
+            if (!overlay) return;
+            overlay.style.display = "flex";
+            overlay.setAttribute("aria-hidden", "false");
+            var firstInput = overlay.querySelector("input[name='name']");
+            if (firstInput) firstInput.focus();
+          }
+
+          function closeModal() {
+            if (!overlay) return;
+            overlay.style.display = "none";
+            overlay.setAttribute("aria-hidden", "true");
+          }
+
+          // Use delegation so "Add Business" works on every page (e.g. business detail)
+          document.addEventListener("click", function(e) {
+            if (e.target && (e.target.id === "openAddBiz" || e.target.closest("#openAddBiz"))) {
+              e.preventDefault();
+              openModal();
+            }
+          });
+
+          if (closeBtn) closeBtn.addEventListener("click", closeModal);
+          if (cancelBtn) cancelBtn.addEventListener("click", closeModal);
+
+          if (overlay) {
+            overlay.addEventListener("click", function(e) {
+              if (e.target === overlay) closeModal();
+            });
+          }
+
+          document.addEventListener("keydown", function(e) {
+            if (e.key === "Escape") closeModal();
+          });
+        })();
+      </script>
+</body>
+</html>

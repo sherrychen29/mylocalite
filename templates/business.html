@@ -1,0 +1,398 @@
+{% extends "base.html" %}
+{% block title %}{{ business["name"] }} | MyLocalite{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('discover') }}" class="back-link">← Discover</a>
+
+{% set hero_photos = photos|default([]) %}
+
+<div class="business-detail business-detail--{{ business['category']|lower }}">
+    <div class="business-layout">
+        <div class="business-main">
+            <div class="business-hero">
+            <header class="business-header">
+                <div class="business-header-top">
+                    <h1 class="business-title">{{ business["name"] }}</h1>
+                    <span class="pill pill--{{ business['category']|lower }}">
+                        <img class="pill-icon" src="{{ url_for('static', filename='media/' ~ (business['category']|lower) ~ '.svg') }}" alt="" aria-hidden="true">
+                        <span class="pill-text">{{ business["category"] }}</span>
+                    </span>
+                    <div class="business-header-bookmark">
+                        <form method="POST" action="/bookmark/toggle" style="display:inline; margin:0;">
+                            <input type="hidden" name="business_id" value="{{ business['id'] }}">
+                            <button type="submit" class="icon-btn {{ 'saved' if bookmarked else '' }}" title="{{ 'Saved' if bookmarked else 'Save' }}" aria-label="{{ 'Saved' if bookmarked else 'Save' }}" aria-pressed="{{ 'true' if bookmarked else 'false' }}">
+                                <img class="bookmark-icon" src="{{ url_for('static', filename='media/bookmark-filled.svg') if bookmarked else url_for('static', filename='media/bookmark.svg') }}" alt="" aria-hidden="true">
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <p class="business-rating">
+                    {% set filled = (business['avg_rating']|round(0)) %}
+                    {% for i in range(5) %}
+                        <img class="icon-star" src="{{ url_for('static', filename='media/star-2.png' if i < filled else 'media/star-1.png') }}" alt="">
+                    {% endfor %}
+                    {{ "%.1f"|format(business["avg_rating"]) }} · {{ business["review_count"] }} reviews
+                </p>
+            </header>
+
+            <div class="business-info">
+        <p class="business-desc">{{ business["description"] }}</p>
+        <dl class="business-contact">
+            <dt><img class="business-contact-icon" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAAsTAAALEwEAmpwYAAAD7ElEQVR4nO2aS4hcRRSGz6AiGuMTwYULJYoGXLhxI2giaNQoqNEx4GNlbOj6/5pmHGYXiSg42QsKbtwpDrrQQdCYEGPC3FOXVicKJplAFoIgqNHEGJP4aKluJzRJxsytrvvo6f7gQG/61vlPnTp1btUVGTJkyJAhQ3JlpzGXJcasV3KrkjMK7HfkYSVPeWv/BvYp8KECUyn5oP+P9DMtkREvxJHTCpxwZCuj/aHku86YB/yzpJ9w5Kgjvw4QfW4D5lJyg1SdZGzsZiW3RxN+tm2bNeYmqSIJ8LiSv+YofiEbjjrgKakKLZERB7yUu/AzzBfU0mtDS2REyTeKFt8VhNdLDYICU2WJPx0E4JVSxKfkxrLFnzZrny682jvyt9KFLxhwpGntqsICoPludaG2rRjx1j5RAbGLZcJj+W95jNjhxQ/AXK67Qtrp7Xt18hMHbEobjVvmJiZWeGuStzryeZ/GEZ5/f24BcOR0qGP+DVDJu847hjF3K3mghyC8k4v4PZOTKwPf6rz4z75qNK5c6li76/WrlNwVmAHHm7XapZVJfwX2ZxHfHQQHzAeNae266AFQcmuQM0tI+8VIgLWBy+DVPAIwU8beHNhzfBBHdRdBhQnYJD2iQC1g2e3rddyzUPKnrI74rU565L8tMuuy+1Fio8DJrI7EONj0zwjIgBMSG+2c3hYeALX28oAAnJTYOPJwGUsgqddXB9SenyU22jnL74si6MhvJTaO/CggFT/teVxgR0ARnImjugvfXAR2ZfdIIKm1a4LGBF6W2Cj5UJAz5AHf1mYdb3Z8/GpHHgwZ098mRQ/A3MTECiV/DwzCrixBaIsHPg+c/WO5vAx5HPle0Ix0CuK87+3lPPglEzzzHZuWvFBr1/Xg2EI2bPeV3W9vvk9o3xzX66vb1T6g4J1pKXlvvhchwDe9Opmj7c39okSNeaQCQhdbZg/nKn6BgT4W9yh5Y8UuRo4mjcYNUiQpuUHJf8oW3/bBmCdlgC9Hp6QsWp1d4a0SU//t0r8RaNZqFyn5cQnid8xbe7FUgT2Tkysd+UWBAdjbrNWukCrxpbXXhp7jZ5z5Q86Y66SKNK1d5YAf8hLvDztjnDLlSlqv35FLjwAcT629U/qBxJj1DvgzYgD+UvJR6SdS8pkYjZJ/hpLPST/iyBcjzP5m6Wcc8Frw7ANvSr8zPTp6gQLvB6T+zM4tWy6U5cDs+PgljtydYeadP4OU5YQDrvEXFksIwEHfVMlyRK29Xsnv/kf894W/1xdNOjZ2mwK/nKPROeKMuV0GgQRY2/3Blb95ToD7ZJBIyY0K/N1udIx5VgYRB7zgrWw/hgyRweVfVVcaEuVQYHcAAAAASUVORK5CYII=" alt=""> Address</dt><dd>{{ business["address"] }}</dd>
+            <dt><img class="business-contact-icon" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAAAsTAAALEwEAmpwYAAADR0lEQVR4nO2aSU8UURCA++Ry0LihxsTl6EFPelKPRmOi0aPibyDgQgSnij4rGpwAVTPBhEQDTNfgEgWXf2CIZ1lPgjEu4axoHFM9IyTMDEz3vNfdGCp5mcOkX73vVb3qqnrtOOvyn8oAtW3P9cIlIegUwlFhnBDGeSH46Q/GeY9g3P+PoDPPePFZl7vNSYK8SjdtFO646jG+FcLfwlgINPQZwtdC0KhzOVGL3L+2WTJ4XRg+BV58dag5IWzp73c3RQKRJzwnhDPGAMoGTOcIz1p2I0jbAygDeqSWNwox2Ne+Rxjfh1lQvjd1Isd4MiTM2BNydxuBGGL3kJo77M7+myfs8x7hlK6hLghJtzeUwmghLhApBoIZ6XH3hoLQ6BHWnYyDcNHNQoVoIeD6lZsEwYIQdAcPsSYUmwZhP3icqT3MEkwmFUQYpmt6aRbf2KaU2gBBhWmuwRo4l3QQj2B2xYOvCaDZnbNlESx43HGlKoifxa4RECEcrVpPhErFY7MI/HqcdreWgfhFkelds2kRxkKe4Hwlt7q31kCE8W75QS+Wp2sLhOBFuUUIp8wqwQUhaF3aKGhVvzYMM1HJtb4b3q0bFXTcNKzjWwXX8jsdxpQMZN1dVcoCYzo8xh/WQaTP3bFcx2C3u886iGfQtTyGL5J1D5RvFrZF4VqTpiBy5B7ROYd6U/ufdrftVEt4BLdMW90jGLcVfr9KFo7qfMNZ97AwfDZqAa4h/PqtTkOW0F/fvWxCsG+RO6ZTlGgtwSukKNpQDpM0xmEJ8d0KFyomjb57MbwJMeGxyCFYB4xUhCidk8bAE2ZTp/KZ28ejhUA96JcjLXVtDI9gVsTdUBWkaBVsiXuhstrIpJpWhFi0Sp1tUrvWwKmaO456P5FQiD85Sp2uCWLRxRh74l64LB+EDwJBLLkYjCXHGvBu1QNeTbSmSMR5IZzRyyanHtFLFuNlcCAImBzuSR10TIhef8XhZp66U7q9wbFxGaqRIyKQrNW7d72fsOxqE4FDbJ3WafZTBXMAH/WNHcsXEKpUu+JaXYbpWRWfgRFNAEOHVtOitUEugxe0jekxvtR62m9olD6qKTU3Pmh5qpWdFkXPH7ZuMb6QdXGSIX8BOfWktsKbcF4AAAAASUVORK5CYII=" alt=""> Hours</dt><dd>{{ business["hours"] }}</dd>
+            <dt><img class="business-contact-icon" src="data:image/png;base64,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" alt="phone"> Phone</dt><dd>{{ business["phone"] }}</dd>
+        </dl>
+    </div>
+            </div>
+
+    <section class="business-section business-section--reviews">
+        <h2 class="business-section-title business-section-title--reviews">Review</h2>
+        {% if reviews|length == 0 %}
+        <p class="business-empty">Nobody’s written anything yet. You could be first!</p>
+        {% else %}
+        <ul class="review-list">
+            {% for r in reviews %}
+            <li class="review-item">
+                <div class="review-item-head">
+                    <strong>{{ r["username"] }}</strong>
+                    <span class="review-item-rating">
+                        {% set review_filled = (r['rating']|round(0)) %}
+                        {% for i in range(5) %}
+                            <img class="icon-star" src="{{ url_for('static', filename='media/star-2.png' if i < review_filled else 'media/star-1.png') }}" alt="">
+                        {% endfor %}
+                        {{ r["rating"] }}
+                    </span>
+                </div>
+                <time class="review-item-time">{{ r["created_at"] }}</time>
+                <p class="review-item-comment">{{ r["comment"] }}</p>
+                {% if r["is_flagged"] == 1 %}
+                <p class="flag">Flagged for review</p>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </section>
+
+    <section class="business-section business-section--review-form">
+        <h2 class="business-section-title business-section-title--form">Drop a note</h2>
+        <p class="business-section-kicker">What did you think? A sentence or two helps the next person.</p>
+        <div class="form-card form-card--compact form-card--review">
+            <form id="reviewForm" class="review-form">
+                <input type="hidden" name="business_id" value="{{ business['id'] }}">
+                <div class="form-field-with-count">
+                    <label for="username">Display Name</label>
+                    <span id="usernameCharCount" class="char-count char-count--inline" aria-live="polite">0 / 35</span>
+                    <input id="username" type="text" name="username" class="input" placeholder="Your name" maxlength="35">
+                </div>
+                <label for="rating">Rating</label>
+                <select id="rating" name="rating" class="select">
+                    <option value="5">5</option>
+                    <option value="4">4</option>
+                    <option value="3">3</option>
+                    <option value="2">2</option>
+                    <option value="1">1</option>
+                </select>
+                <div class="form-field-with-count form-field-with-count--textarea">
+                    <label for="comment">Comment</label>
+                    <textarea id="comment" name="comment" class="textarea" rows="3" placeholder="Loved the vibe? Something to know? Just type it..." maxlength="250"></textarea>
+                    <span id="commentCharCount" class="char-count char-count--bottom-right" aria-live="polite">0 / 250</span>
+                </div>
+                <button type="submit" class="btn btn-warm">Send it</button>
+                <p id="reviewInlineError" class="modal-error" style="display:none;"></p>
+            </form>
+        </div>
+    </section>
+        </div>
+
+        <aside class="business-side">
+            <div class="business-media">
+                <form id="uploadImageForm" action="{{ url_for('upload_business_photo', business_id=business['id']) }}" method="post" enctype="multipart/form-data" style="display: contents;">
+                    <input type="file" id="imageFileInput" name="image" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" multiple style="display: none;" aria-label="Choose image files (up to 5)">
+                </form>
+                {% if hero_photos|length > 0 %}
+                <button type="button" class="business-media-img" id="heroImageBtn" data-open-gallery="0" aria-label="View image gallery">
+                    <img src="{{ hero_photos[0]['url'] }}" alt="Photo of {{ business['name'] }}" loading="lazy">
+                </button>
+                <p class="business-media-hint">Tap to flip through.</p>
+                <button type="button" class="btn btn-add-image" id="addImageBtn" aria-label="Add images (up to 5)">+ Add Images</button>
+                {% else %}
+                <div class="business-media-placeholder">
+                    <p class="business-media-placeholder-text">No pics yet. Got one? Add it here.</p>
+                    <button type="button" class="btn btn-add-image" id="addImageBtn" aria-label="Add images (up to 5)">+ Add a photo</button>
+                </div>
+                {% endif %}
+            </div>
+            <section class="business-section business-section--deals">
+                <h2 class="business-section-title business-section-title--deals">Grab a deal</h2>
+                {% if deals|length == 0 %}
+                <p class="business-empty business-empty--deals">No deals right now. Next time maybe!</p>
+                {% else %}
+                <ul class="deal-list">
+                    {% for d in deals %}
+                    <li class="deal-card">
+                        <strong class="deal-card-title">{{ d["title"] }}</strong>
+                        <p class="deal-card-desc">{{ d["description"] }}</p>
+                        <div class="deal-card-tear">
+                            <span class="coupon-chip">{{ d["coupon_code"] }}</span>
+                        </div>
+                        <p class="deal-card-expiry">Expires {{ d["expires_at"] }}</p>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </section>
+        </aside>
+    </div>
+</div>
+
+<div id="galleryOverlay" class="gallery-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Image gallery">
+    <div class="gallery-popup">
+        <button type="button" class="gallery-close" id="galleryClose" aria-label="Close gallery">×</button>
+        <div class="gallery-popup-inner">
+            <div class="gallery-view">
+                <img id="galleryImage" src="" alt="" class="gallery-current">
+            </div>
+            <button type="button" class="gallery-nav gallery-prev" id="galleryPrev" aria-label="Previous image">‹</button>
+            <button type="button" class="gallery-nav gallery-next" id="galleryNext" aria-label="Next image">›</button>
+        </div>
+        <span class="gallery-counter" id="galleryCounter" aria-live="polite"></span>
+    </div>
+</div>
+
+<div id="modalOverlay" class="modal-overlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <h3 id="modalTitle">Verification</h3>
+        <p class="muted-small">To prevent bot spam, answer this quick question:</p>
+        <p id="modalQuestion" style="font-weight:bold;"></p>
+
+        <label for="modalAnswer">Your answer</label>
+        <input id="modalAnswer" type="text" class="input" placeholder="Type answer..." />
+
+        <p id="modalError" class="modal-error" style="display:none;"></p>
+        <p id="modalTries" class="muted-small" style="display:none;"></p>
+
+        <div class="modal-actions">
+            <button id="modalCancel" type="button" class="btn btn-outline">Cancel</button>
+            <button id="modalSubmit" type="button" class="btn">Submit</button>
+        </div>
+    </div>
+</div>
+
+<script type="application/json" id="gallery-urls-data">{{ hero_photos|tojson }}</script>
+<script>
+    var galleryUrls = (function() {
+        var el = document.getElementById('gallery-urls-data');
+        if (!el) return [];
+        try { return JSON.parse(el.textContent) || []; } catch (e) { return []; }
+    })();
+
+    (function() {
+        var addImageBtn = document.getElementById("addImageBtn");
+        var imageFileInput = document.getElementById("imageFileInput");
+        var uploadImageForm = document.getElementById("uploadImageForm");
+        if (addImageBtn && imageFileInput && uploadImageForm) {
+            addImageBtn.addEventListener("click", function() { imageFileInput.click(); });
+            imageFileInput.addEventListener("change", function() {
+                if (imageFileInput.files && imageFileInput.files.length > 0) uploadImageForm.submit();
+            });
+        }
+    })();
+
+    (function() {
+        var overlay = document.getElementById("galleryOverlay");
+        var galleryImage = document.getElementById("galleryImage");
+        var galleryCounter = document.getElementById("galleryCounter");
+        var galleryClose = document.getElementById("galleryClose");
+        var galleryPrev = document.getElementById("galleryPrev");
+        var galleryNext = document.getElementById("galleryNext");
+        var heroImageBtn = document.getElementById("heroImageBtn");
+        var currentIndex = 0;
+
+        function updateGalleryImage() {
+            if (!galleryUrls.length) return;
+            var item = galleryUrls[currentIndex];
+            var url = typeof item === "string" ? item : (item && item.url);
+            if (url) {
+                galleryImage.src = url;
+                galleryImage.alt = "Photo " + (currentIndex + 1) + " of " + galleryUrls.length;
+            }
+            galleryCounter.textContent = (currentIndex + 1) + " / " + galleryUrls.length;
+        }
+
+        function openGallery(index) {
+            if (!galleryUrls.length) return;
+            currentIndex = (index >= 0 && index < galleryUrls.length) ? index : 0;
+            updateGalleryImage();
+            overlay.style.display = "flex";
+            overlay.setAttribute("aria-hidden", "false");
+            document.body.style.overflow = "hidden";
+        }
+
+        function closeGallery() {
+            overlay.style.display = "none";
+            overlay.setAttribute("aria-hidden", "true");
+            document.body.style.overflow = "";
+        }
+
+        if (heroImageBtn && galleryUrls.length) {
+            heroImageBtn.addEventListener("click", function() { openGallery(0); });
+        }
+        if (galleryClose) galleryClose.addEventListener("click", closeGallery);
+        if (galleryPrev) galleryPrev.addEventListener("click", function() {
+            currentIndex = (currentIndex - 1 + galleryUrls.length) % galleryUrls.length;
+            updateGalleryImage();
+        });
+        if (galleryNext) galleryNext.addEventListener("click", function() {
+            currentIndex = (currentIndex + 1) % galleryUrls.length;
+            updateGalleryImage();
+        });
+        if (overlay) overlay.addEventListener("click", function(e) {
+            if (e.target === overlay) closeGallery();
+        });
+        document.addEventListener("keydown", function(e) {
+            if (overlay.getAttribute("aria-hidden") === "true") return;
+            if (e.key === "Escape") { e.preventDefault(); closeGallery(); return; }
+            if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                currentIndex = (currentIndex - 1 + galleryUrls.length) % galleryUrls.length;
+                updateGalleryImage();
+            }
+            if (e.key === "ArrowRight") {
+                e.preventDefault();
+                currentIndex = (currentIndex + 1) % galleryUrls.length;
+                updateGalleryImage();
+            }
+        });
+    })();
+
+    const reviewForm = document.getElementById("reviewForm");
+    const inlineErr = document.getElementById("reviewInlineError");
+    const usernameInput = document.getElementById("username");
+    const commentInput = document.getElementById("comment");
+    const usernameCharCount = document.getElementById("usernameCharCount");
+    const commentCharCount = document.getElementById("commentCharCount");
+
+    function updateCharCounts() {
+        if (usernameCharCount) usernameCharCount.textContent = (usernameInput?.value?.length ?? 0) + " / 35";
+        if (commentCharCount) commentCharCount.textContent = (commentInput?.value?.length ?? 0) + " / 250";
+    }
+    if (usernameInput) usernameInput.addEventListener("input", updateCharCounts);
+    if (commentInput) commentInput.addEventListener("input", updateCharCounts);
+    updateCharCounts();
+
+    const overlay = document.getElementById("modalOverlay");
+    const qEl = document.getElementById("modalQuestion");
+    const ansEl = document.getElementById("modalAnswer");
+    const errEl = document.getElementById("modalError");
+    const triesEl = document.getElementById("modalTries");
+    const cancelBtn = document.getElementById("modalCancel");
+    const submitBtn = document.getElementById("modalSubmit");
+
+    let currentAttemptId = null;
+
+    function openModal(question, attemptId) {
+        currentAttemptId = attemptId;
+        qEl.textContent = question;
+        ansEl.value = "";
+        errEl.style.display = "none";
+        triesEl.style.display = "none";
+        overlay.style.display = "flex";
+        overlay.setAttribute("aria-hidden", "false");
+        ansEl.focus();
+    }
+
+    function closeModal() {
+        overlay.style.display = "none";
+        overlay.setAttribute("aria-hidden", "true");
+        currentAttemptId = null;
+    }
+
+    cancelBtn.addEventListener("click", closeModal);
+
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) closeModal();
+    });
+
+    reviewForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        inlineErr.style.display = "none";
+        inlineErr.textContent = "";
+
+        const formData = new FormData(reviewForm);
+        const payload = {
+            business_id: formData.get("business_id"),
+            username: formData.get("username"),
+            rating: formData.get("rating"),
+            comment: formData.get("comment")
+        };
+
+        try {
+            const res = await fetch("/review/start_verification", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            if (!data.ok) {
+                inlineErr.textContent = data.error || "Could not start verification.";
+                inlineErr.style.display = "block";
+                return;
+            }
+
+            openModal(data.question, data.attempt_id);
+
+        } catch (err) {
+            inlineErr.textContent = "Network error. Please try again.";
+            inlineErr.style.display = "block";
+        }
+    });
+
+    submitBtn.addEventListener("click", async () => {
+        errEl.style.display = "none";
+        triesEl.style.display = "none";
+
+        const answer = ansEl.value.trim();
+        if (!answer) {
+            errEl.textContent = "Please enter an answer.";
+            errEl.style.display = "block";
+            return;
+        }
+
+        try {
+            const res = await fetch("/review/submit", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ attempt_id: currentAttemptId, answer })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok && res.status === 429 && data && data.error) {
+                errEl.textContent = data.error;
+                errEl.style.display = "block";
+                return;
+            }
+
+            if (!data.ok) {
+                errEl.textContent = data.error || "Verification failed.";
+                errEl.style.display = "block";
+
+                if (typeof data.tries_left !== "undefined") {
+                    triesEl.textContent = `Tries left: ${data.tries_left}`;
+                    triesEl.style.display = "block";
+                }
+                return;
+            }
+
+            closeModal();
+            window.location.href = data.redirect;
+
+        } catch (err) {
+            errEl.textContent = "Network error. Please try again.";
+            errEl.style.display = "block";
+        }
+    });
+</script>
+{% endblock %}

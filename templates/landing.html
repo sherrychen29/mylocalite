@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}MyLocalite – Support local businesses{% endblock %}
+
+{% block content %}
+<section class="landing-page {% if photos %}landing-page--has-slideshow{% endif %}">
+  {% if photos %}
+  <div class="landing-slideshow" aria-hidden="true">
+    <div class="landing-slideshow-row">
+      <div class="landing-slideshow-track">
+        {% for url in photos_row1 %}<img src="{{ url }}" alt="" class="landing-slideshow-img" loading="lazy">{% endfor %}
+        {% for url in photos_row1 %}<img src="{{ url }}" alt="" class="landing-slideshow-img" loading="lazy">{% endfor %}
+      </div>
+    </div>
+    <div class="landing-slideshow-row">
+      <div class="landing-slideshow-track">
+        {% for url in photos_row2 %}<img src="{{ url }}" alt="" class="landing-slideshow-img" loading="lazy">{% endfor %}
+        {% for url in photos_row2 %}<img src="{{ url }}" alt="" class="landing-slideshow-img" loading="lazy">{% endfor %}
+      </div>
+    </div>
+    <div class="landing-slideshow-row">
+      <div class="landing-slideshow-track">
+        {% for url in photos_row3 %}<img src="{{ url }}" alt="" class="landing-slideshow-img" loading="lazy">{% endfor %}
+        {% for url in photos_row3 %}<img src="{{ url }}" alt="" class="landing-slideshow-img" loading="lazy">{% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="landing-slideshow-overlay"></div>
+  {% endif %}
+
+  <section class="landing-hero">
+    <div class="landing-brand-block">
+      <a href="/" class="header-wordmark">MyLocalite</a>
+    </div>
+    <h1 class="landing-title">Discover &amp; support local businesses</h1>
+    <p class="landing-tagline">Find cafés, shops, and services near you. Save favourites, read reviews, and grab deals.</p>
+    <a href="{{ url_for('discover') }}" class="btn btn-warm landing-cta">Discover businesses</a>
+  </section>
+</section>
+{% endblock %}

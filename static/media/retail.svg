@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="Retail">
+  <g fill="none" stroke="#a63d5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- bag -->
+    <path d="M6 8h12l-1 13H7L6 8z"/>
+    <!-- handle -->
+    <path d="M9 8V6a3 3 0 0 1 6 0v2"/>
+    <!-- tag -->
+    <path d="M10.5 12h3"/>
+  </g>
+</svg>

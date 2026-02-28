@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}My Bookmarks | MyLocalite{% endblock %}
+
+{% block content %}
+<h1 class="section-title">My Bookmarks</h1>
+
+{% if businesses|length == 0 %}
+<div class="empty-state">
+    <h2>No bookmarks yet</h2>
+    <p>Save businesses from the Discover page to find them here.</p>
+    <a href="{{ url_for('discover') }}" class="btn btn-warm">Go Discover</a>
+</div>
+{% else %}
+<div class="grid">
+    {% for b in businesses %}
+    <article class="card card_{{ b['category']|lower }}">
+        <div class="card-top">
+            <h2 class="card-title">{{ b["name"] }}</h2>
+            <span class="pill pill--{{ b['category']|lower }}">
+                <img class="pill-icon" src="{{ url_for('static', filename='media/' ~ (b['category']|lower) ~ '.svg') }}" alt="" aria-hidden="true">
+                <span class="pill-text">{{ b["category"] }}</span>
+            </span>
+        </div>
+
+        <p class="desc">{{ b["description"] }}</p>
+
+        <p class="card-address">
+            <img class="icon-marker" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAAsTAAALEwEAmpwYAAAD7ElEQVR4nO2aS4hcRRSGz6AiGuMTwYULJYoGXLhxI2giaNQoqNEx4GNlbOj6/5pmHGYXiSg42QsKbtwpDrrQQdCYEGPC3FOXVicKJplAFoIgqNHEGJP4aKluJzRJxsytrvvo6f7gQG/61vlPnTp1btUVGTJkyJAhQ3JlpzGXJcasV3KrkjMK7HfkYSVPeWv/BvYp8KECUyn5oP+P9DMtkREvxJHTCpxwZCuj/aHku86YB/yzpJ9w5Kgjvw4QfW4D5lJyg1SdZGzsZiW3RxN+tm2bNeYmqSIJ8LiSv+YofiEbjjrgKakKLZERB7yUu/AzzBfU0mtDS2REyTeKFt8VhNdLDYICU2WJPx0E4JVSxKfkxrLFnzZrny682jvyt9KFLxhwpGntqsICoPludaG2rRjx1j5RAbGLZcJj+W95jNjhxQ/AXK67Qtrp7Xt18hMHbEobjVvmJiZWeGuStzryeZ/GEZ5/f24BcOR0qGP+DVDJu847hjF3K3mghyC8k4v4PZOTKwPf6rz4z75qNK5c6li76/WrlNwVmAHHm7XapZVJfwX2ZxHfHQQHzAeNae266AFQcmuQM0tI+8VIgLWBy+DVPAIwU8beHNhzfBBHdRdBhQnYJD2iQC1g2e3rddyzUPKnrI74rU565L8tMuuy+1Fio8DJrI7EONj0zwjIgBMSG+2c3hYeALX28oAAnJTYOPJwGUsgqddXB9SenyU22jnL74si6MhvJTaO/CggFT/teVxgR0ARnImjugvfXAR2ZfdIIKm1a4LGBF6W2Cj5UJAz5AHf1mYdb3Z8/GpHHgwZ098mRQ/A3MTECiV/DwzCrixBaIsHPg+c/WO5vAx5HPle0Ix0CuK87+3lPPglEzzzHZuWvFBr1/Xg2EI2bPeV3W9vvk9o3xzX66vb1T6g4J1pKXlvvhchwDe9Opmj7c39okSNeaQCQhdbZg/nKn6BgT4W9yh5Y8UuRo4mjcYNUiQpuUHJf8oW3/bBmCdlgC9Hp6QsWp1d4a0SU//t0r8RaNZqFyn5cQnid8xbe7FUgT2Tkysd+UWBAdjbrNWukCrxpbXXhp7jZ5z5Q86Y66SKNK1d5YAf8hLvDztjnDLlSlqv35FLjwAcT629U/qBxJj1DvgzYgD+UvJR6SdS8pkYjZJ/hpLPST/iyBcjzP5m6Wcc8Frw7ANvSr8zPTp6gQLvB6T+zM4tWy6U5cDs+PgljtydYeadP4OU5YQDrvEXFksIwEHfVMlyRK29Xsnv/kf894W/1xdNOjZ2mwK/nKPROeKMuV0GgQRY2/3Blb95ToD7ZJBIyY0K/N1udIx5VgYRB7zgrWw/hgyRweVfVVcaEuVQYHcAAAAASUVORK5CYII=" alt="marker--v1">
+            {{ b["address"] }}
+        </p>
+
+        <p class="stats">
+            <img
+                class="icon-star"
+                src="{{ url_for('static', filename='media/' ~ ('star-2.png' if b['avg_rating'] >= 3.5 else 'star-1.png')) }}"
+                alt="rating star"
+            >
+            {{ "%.1f"|format(b["avg_rating"]) }} ({{ b["review_count"] }} reviews)
+        </p>
+
+        <div class="card-actions">
+            <a class="btn btn-view" href="/business/{{ b['id'] }}">View</a>
+            <form method="POST" action="/bookmark/toggle" style="margin:0;">
+                <input type="hidden" name="business_id" value="{{ b['id'] }}">
+                <button
+                    type="submit"
+                    class="icon-btn saved"
+                    title="Unsave"
+                    aria-label="Unsave"
+                    aria-pressed="true"
+                >
+                    <img
+                        class="bookmark-icon"
+                        src="{{ url_for('static', filename='media/bookmark-filled.svg') }}"
+                        alt=""
+                        aria-hidden="true"
+                    >
+                </button>
+            </form>
+        </div>
+    </article>
+    {% endfor %}
+</div>
+
+{% if total_pages > 1 %}
+<nav class="pagination" aria-label="Page navigation">
+    <div class="pagination-inner">
+        {% if page > 1 %}
+        <a class="btn btn-view" href="/bookmarks?page={{ page - 1 }}">← Prev</a>
+        {% else %}
+        <span class="btn btn-view" aria-disabled="true">← Prev</span>
+        {% endif %}
+        <span class="pagination-info">Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a class="btn btn-view" href="/bookmarks?page={{ page + 1 }}">Next →</a>
+        {% else %}
+        <span class="btn btn-view" aria-disabled="true">Next →</span>
+        {% endif %}
+    </div>
+</nav>
+{% endif %}
+{% endif %}
+{% endblock %}
