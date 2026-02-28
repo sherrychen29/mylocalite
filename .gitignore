@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+.venv/
+env/
+*.egg-info/
+.eggs/
+
+# Database (create fresh or keep local)
+data/*.db
+data/*.db-wal
+data/*.db-shm
+
+# Uploads (user-generated)
+static/uploads/*
+!static/uploads/.gitkeep
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+*.sqbpro
+
+# Env (if you add one later)
+.env
+.env.local
