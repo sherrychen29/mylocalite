@@ -2,14 +2,18 @@
 {% block title %}{{ business["name"] }} | MyLocalite{% endblock %}
 
 {% block content %}
+<!-- Back to Discover -->
 <a href="{{ url_for('discover') }}" class="back-link">← Discover</a>
 
 {% set hero_photos = photos|default([]) %}
 
+<!-- Detail: hero (name, category, bookmark, rating, info, photos), then reviews, form, deals -->
 <div class="business-detail business-detail--{{ business['category']|lower }}">
     <div class="business-layout">
+        <!-- Main column: hero, reviews, review form -->
         <div class="business-main">
             <div class="business-hero">
+            <!-- Business name, category pill, bookmark button -->
             <header class="business-header">
                 <div class="business-header-top">
                     <h1 class="business-title">{{ business["name"] }}</h1>
@@ -26,6 +30,7 @@
                         </form>
                     </div>
                 </div>
+                <!-- Star rating + review count -->
                 <p class="business-rating">
                     {% set filled = (business['avg_rating']|round(0)) %}
                     {% for i in range(5) %}
@@ -35,6 +40,7 @@
                 </p>
             </header>
 
+            <!-- Description + address, hours, phone -->
             <div class="business-info">
         <p class="business-desc">{{ business["description"] }}</p>
         <dl class="business-contact">
@@ -45,6 +51,7 @@
     </div>
             </div>
 
+    <!-- Reviews list -->
     <section class="business-section business-section--reviews">
         <h2 class="business-section-title business-section-title--reviews">Review</h2>
         {% if reviews|length == 0 %}
@@ -74,6 +81,7 @@
         {% endif %}
     </section>
 
+    <!-- Review form: name, rating, comment, verification -->
     <section class="business-section business-section--review-form">
         <h2 class="business-section-title business-section-title--form">Drop a note</h2>
         <p class="business-section-kicker">What did you think? A sentence or two helps the next person.</p>
@@ -105,7 +113,9 @@
     </section>
         </div>
 
+        <!-- Sidebar: photos, deals -->
         <aside class="business-side">
+            <!-- Photo gallery / upload -->
             <div class="business-media">
                 <form id="uploadImageForm" action="{{ url_for('upload_business_photo', business_id=business['id']) }}" method="post" enctype="multipart/form-data" style="display: contents;">
                     <input type="file" id="imageFileInput" name="image" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" multiple style="display: none;" aria-label="Choose image files (up to 5)">
@@ -123,6 +133,7 @@
                 </div>
                 {% endif %}
             </div>
+            <!-- Deals list -->
             <section class="business-section business-section--deals">
                 <h2 class="business-section-title business-section-title--deals">Grab a deal</h2>
                 {% if deals|length == 0 %}
@@ -146,6 +157,7 @@
     </div>
 </div>
 
+<!-- Image gallery popup (prev/next, close) -->
 <div id="galleryOverlay" class="gallery-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Image gallery">
     <div class="gallery-popup">
         <button type="button" class="gallery-close" id="galleryClose" aria-label="Close gallery">×</button>
@@ -160,6 +172,7 @@
     </div>
 </div>
 
+<!-- Review verification modal (math question) -->
 <div id="modalOverlay" class="modal-overlay" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <h3 id="modalTitle">Verification</h3>
@@ -180,6 +193,7 @@
 </div>
 
 <script type="application/json" id="gallery-urls-data">{{ hero_photos|tojson }}</script>
+<!-- Gallery + upload + review verification scripts -->
 <script>
     var galleryUrls = (function() {
         var el = document.getElementById('gallery-urls-data');

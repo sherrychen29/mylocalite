@@ -7,27 +7,25 @@ import random
 import hashlib
 from datetime import datetime, timedelta
 
+# Config
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "data", "locallift.db")
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
 ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
-# Timeout (seconds) to wait for SQLite lock before raising "database is locked"
 DB_TIMEOUT = 20
 CARDS_PER_ROW = 3
 ROWS_PER_PAGE = 5
-PER_PAGE = CARDS_PER_ROW * ROWS_PER_PAGE  # 15
+PER_PAGE = CARDS_PER_ROW * ROWS_PER_PAGE
 
 app = Flask(__name__)
-app.secret_key = "wenis"  # change later if you want
-app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8 MB max upload
+app.secret_key = "wenis"
+app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
 RATE_LIMIT_SECONDS = 60
 MAX_COMMENT_LEN = 250
 MAX_USERNAME_LEN = 35
 
 
-# -------------------------------
-# DATABASE INITIALIZATION
-# -------------------------------
+# Database init & seed
 def db_init():
     os.makedirs(os.path.join(BASE_DIR, "data"), exist_ok=True)
 
@@ -58,8 +56,6 @@ def db_init():
     )
     """)
 
-    # NOTE: keeping 'username' column name to avoid schema change;
-    # we store an anonymous bookmark owner id in it.
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS bookmark (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -106,11 +102,9 @@ def db_init():
 
     conn.commit()
     conn.close()
-    print("Database initialized")
 
 
 def get_conn():
-    """Open a DB connection with a timeout to reduce 'database is locked' errors."""
     conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT)
     conn.execute("PRAGMA journal_mode=WAL")
     return conn
@@ -129,7 +123,6 @@ def seed_data():
     cur.execute("SELECT COUNT(*) FROM business")
     count = cur.fetchone()[0]
     if count > 0:
-        print("Seed skipped (business table already has data).")
         conn.close()
         return
 
@@ -175,12 +168,9 @@ def seed_data():
 
     conn.commit()
     conn.close()
-    print("Seeded 12 businesses + 4 deals.")
 
 
-# -------------------------------
-# DATA HELPERS
-# -------------------------------
+# Data helpers
 def fetch_business_by_id(business_id: int):
     conn = get_conn()
     conn.row_factory = sqlite3.Row
@@ -249,7 +239,6 @@ def fetch_photos_for_business(business_id: int):
 
 
 def fetch_all_photo_urls():
-    """Return all uploaded photo URLs for the landing slideshow."""
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("SELECT filename FROM business_photo ORDER BY id ASC")
@@ -326,20 +315,14 @@ def _hash_answer(salt: str, answer: str) -> str:
 
 
 def _get_client_ip() -> str:
-    # good enough for local demo
     return request.headers.get("X-Forwarded-For", request.remote_addr) or "unknown"
 
 
-# -------------------------------
-# STARTUP
-# -------------------------------
 db_init()
 seed_data()
 
 
-# -------------------------------
-# ROUTES
-# -------------------------------
+# Routes
 @app.route("/")
 def home():
     photos = fetch_all_photo_urls()
@@ -355,6 +338,7 @@ def home():
     )
 
 
+# Discover: list, filter, sort, paginate
 @app.route("/discover")
 def discover():
     category = request.args.get("category", "All")
@@ -372,7 +356,6 @@ def discover():
     conn = get_conn()
     cur = conn.cursor()
 
-    # Build WHERE clause (category + optional search)
     conditions = []
     params = []
     if category != "All":
@@ -383,7 +366,6 @@ def discover():
         params.extend([f"%{q}%", f"%{q}%"])
     where_sql = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
-    # Count total (same filters) for pagination
     cur.execute(f"SELECT COUNT(*) FROM business b {where_sql}", params)
     total = cur.fetchone()[0]
     total_pages = max(1, (total + PER_PAGE - 1) // PER_PAGE)
@@ -391,7 +373,6 @@ def discover():
         page = total_pages
     offset = (page - 1) * PER_PAGE
 
-    # Order
     if sort == "name":
         order_sql = "ORDER BY b.name ASC"
     elif sort == "rating":
@@ -403,7 +384,6 @@ def discover():
 
     use_random_shuffle = sort == "random"
     if use_random_shuffle:
-        # Fetch all matching businesses (no limit); we'll shuffle then slice
         query = f"""
             SELECT
                 b.id, b.name, b.category, b.description, b.address, b.hours, b.phone,
@@ -449,7 +429,6 @@ def discover():
         })
 
     if use_random_shuffle:
-        # On page 1 (or refresh): always reshuffle. On page 2+: use same order from session.
         shuffle_key = (category, q)
         cached = (
             page > 1
@@ -480,6 +459,7 @@ def discover():
     )
 
 
+# Business detail + deals, reviews, photos
 @app.route("/business/<int:business_id>")
 def business_detail(business_id):
     business = fetch_business_by_id(business_id)
@@ -510,6 +490,7 @@ def _allowed_image(filename):
 MAX_UPLOAD_PHOTOS_PER_REQUEST = 5
 
 
+# Upload photos for a business
 @app.route("/business/<int:business_id>/upload_photo", methods=["POST"])
 def upload_business_photo(business_id):
     business = fetch_business_by_id(business_id)
@@ -540,6 +521,7 @@ def upload_business_photo(business_id):
     return redirect(url_for("business_detail", business_id=business_id))
 
 
+# Toggle bookmark (POST)
 @app.route("/bookmark/toggle", methods=["POST"])
 def bookmark_toggle():
     business_id = request.form.get("business_id", "").strip()
@@ -553,11 +535,11 @@ def bookmark_toggle():
     return redirect(request.referrer or url_for("home"))
 
 
+# Bookmarks list (paginated)
 @app.route("/bookmarks")
 def bookmarks_page():
     owner_id = get_bookmark_owner_id()
 
-    # pagination
     try:
         page = int(request.args.get("page", "1"))
     except:
@@ -570,7 +552,6 @@ def bookmarks_page():
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
-    # count total bookmarks
     cur.execute("SELECT COUNT(*) FROM bookmark WHERE username = ?", (owner_id,))
     total = cur.fetchone()[0]
     total_pages = max(1, (total + PER_PAGE - 1) // PER_PAGE)
@@ -579,7 +560,6 @@ def bookmarks_page():
         page = total_pages
         offset = (page - 1) * PER_PAGE
 
-    # paged bookmark list
     cur.execute("""
         SELECT
             b.*,
@@ -604,6 +584,8 @@ def bookmarks_page():
         total_pages=total_pages
     )
 
+
+# Review: start verification (math Q), store draft in session
 @app.route("/review/start_verification", methods=["POST"])
 def start_verification():
     data = request.get_json(silent=True) or {}
@@ -612,7 +594,6 @@ def start_verification():
     rating = str(data.get("rating", "")).strip()
     comment = str(data.get("comment", "")).strip()
 
-    # Validation (robust)
     if not business_id.isdigit():
         return jsonify({"ok": False, "error": "Invalid business id."}), 400
 
@@ -638,7 +619,6 @@ def start_verification():
     now_ts = int(datetime.now().timestamp())
     last_ts = int(session.get("last_review_ts", 0))
 
-    # soft block (we also enforce again in /review/submit)
     if last_ts and (now_ts - last_ts) < RATE_LIMIT_SECONDS:
         wait = RATE_LIMIT_SECONDS - (now_ts - last_ts)
         return jsonify({
@@ -650,7 +630,6 @@ def start_verification():
     session["last_review_ts"] = now_ts
     session.modified = True
 
-    # Generate a simple math question
     a = random.randint(2, 12)
     b = random.randint(2, 12)
     question = f"What is {a} + {b}?"
@@ -662,7 +641,6 @@ def start_verification():
     ip = _get_client_ip()
     created_at = datetime.now().isoformat(timespec="seconds")
 
-    # Store attempt in DB
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("""
@@ -673,7 +651,6 @@ def start_verification():
     conn.commit()
     conn.close()
 
-    # Store draft in session
     session.setdefault("pending_reviews", {})
     session["pending_reviews"][str(attempt_id)] = {
         "business_id": business_id_int,
@@ -688,6 +665,7 @@ def start_verification():
     return jsonify({"ok": True, "attempt_id": attempt_id, "question": question})
 
 
+# Review: check answer, then insert review
 @app.route("/review/submit", methods=["POST"])
 def submit_review():
     data = request.get_json(silent=True) or {}
@@ -697,7 +675,6 @@ def submit_review():
     if not attempt_id.isdigit():
         return jsonify({"ok": False, "error": "Invalid attempt id."}), 400
 
-    # fetch attempt from DB
     conn = get_conn()
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
@@ -715,7 +692,6 @@ def submit_review():
     salt, stored_hash = stored.split("$", 1)
     provided_hash = _hash_answer(salt, answer)
 
-    # Track tries
     session.setdefault("verification_tries", {})
     tries = int(session["verification_tries"].get(attempt_id, 0)) + 1
     session["verification_tries"][attempt_id] = tries
@@ -726,7 +702,6 @@ def submit_review():
 
     if provided_hash != stored_hash:
         if tries >= max_tries:
-            # cleanup pending
             session.setdefault("pending_reviews", {})
             session["pending_reviews"].pop(attempt_id, None)
             session["verification_tries"].pop(attempt_id, None)
@@ -734,19 +709,16 @@ def submit_review():
             return jsonify({"ok": False, "error": "Too many failed attempts. Please try again.", "tries_left": 0})
         return jsonify({"ok": False, "error": "Incorrect answer. Try again.", "tries_left": tries_left})
 
-    # passed -> mark in DB
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("UPDATE verification_attempt SET passed = 1 WHERE id = ?", (int(attempt_id),))
     conn.commit()
     conn.close()
 
-    # pull draft from session
     draft = session.get("pending_reviews", {}).get(attempt_id)
     if not draft:
         return jsonify({"ok": False, "error": "No pending review found. Please re-submit your review."}), 400
 
-    # insert review
     created_at = datetime.now().isoformat(timespec="seconds")
     is_flagged = 0
 
@@ -759,16 +731,16 @@ def submit_review():
     conn.commit()
     conn.close()
 
-    # cleanup
     session["pending_reviews"].pop(attempt_id, None)
     session["verification_tries"].pop(attempt_id, None)
     session.modified = True
 
     return jsonify({"ok": True, "redirect": url_for("business_detail", business_id=draft["business_id"])})
 
+
+# Add business (modal form)
 @app.route("/admin/add_business", methods=["POST"])
 def admin_add_business():
-    # Required: name, category, address. Optional fields (description, hours, phone) may be "N/A" if unknown.
     name = request.form.get("name", "").strip().title()
     category = request.form.get("category", "").strip()
     description = request.form.get("description", "").strip()

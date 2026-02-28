@@ -1,4 +1,4 @@
-/* ========== Palette: clean + a bit of character (slightly less "safe") ========== */
+/* Palette */
 :root {
   --ink: #1a1f2e;
   --primary: #0d9488;
@@ -10,7 +10,6 @@
   --bg-paper: #FFFFFF;
   --white: #FFFFFF;
 
-  /* Friendly accent — cream / honey (use sparingly) */
   --friendly: #e8dcc4;
   --friendly-soft: rgba(232, 220, 196, 0.5);
 
@@ -24,7 +23,6 @@
   --radius-tag: 4px;
   --transition: 180ms ease;
 
-  /* Type: extremes — 3x+ size jumps, 200 vs 800 weight */
   --text-xs: 0.5rem;
   --text-sm: 0.65rem;
   --text-base: 1rem;
@@ -33,11 +31,10 @@
   --text-2xl: 4.5rem;
   --text-display: 6rem;
   --weight-light: 400;
-  --weight-heavy: 550; /* Syne Bold */
+  --weight-heavy: 550;
 }
 
-/* ========== Fonts ========== */
-/* Syne (300,400,500,600,700) via Google Fonts in base.html */
+/* Fonts */
 @font-face {
   font-family: "TT Interphases Pro";
   src: url("../fonts/TT Interphases Pro Trial Bold.ttf") format("truetype");
@@ -45,7 +42,6 @@
   font-style: normal;
 }
 
-/* Syne Bold: title, business names, View btn, form labels, section titles, review name/rating, contact labels */
 .header-wordmark,
 .card-title,
 .business-title,
@@ -62,15 +58,15 @@
   font-weight: 700;
 }
 
-/* ========== Global base ========== */
+/* Base */
 * {
   box-sizing: border-box;
 }
 
 body {
   font-family: "Syne", sans-serif;
-  font-size: 15px; /* 1rem base */
-  font-weight: 500; /* Syne Medium */
+  font-size: 15px;
+  font-weight: 500;
   line-height: 1.58;
   color: var(--ink);
   background: var(--bg);
@@ -85,7 +81,6 @@ body > .container {
   flex: 1;
 }
 
-/* Subtle background (no texture — clean for judges) */
 body::before {
   content: "";
   position: fixed;
@@ -106,7 +101,7 @@ a:hover {
   color: var(--ink);
 }
 
-/* ========== Layout ========== */
+/* Layout */
 .container {
   max-width: 1000px;
   margin: 0 auto;
@@ -115,7 +110,7 @@ a:hover {
   z-index: 1;
 }
 
-/* ========== Landing page ========== */
+/* Landing: hero + optional slideshow */
 .landing-page {
   position: relative;
   min-height: 85vh;
@@ -129,7 +124,6 @@ a:hover {
   align-items: center;
 }
 
-/* Slideshow: 3 rows, slide to the right (content moves left), loop */
 .landing-slideshow {
   position: absolute;
   inset: 0;
@@ -169,7 +163,6 @@ a:hover {
   to { transform: translateX(-50%); }
 }
 
-/* Dim + teal tint overlay */
 .landing-slideshow-overlay {
   position: absolute;
   inset: 0;
@@ -211,7 +204,6 @@ a:hover {
   background: radial-gradient(ellipse 80% 60% at 50% 0%, var(--friendly-soft), transparent 70%), var(--bg);
 }
 
-/* Gentle paper texture overlay (when no slideshow) */
 .landing-hero::before {
   content: "";
   position: absolute;
@@ -270,7 +262,7 @@ a:hover {
   transform: translateY(-1px);
 }
 
-/* ========== Header — bold wordmark + warm stripe ========== */
+/* Header */
 .header {
   background: var(--ink);
   color: var(--white);
@@ -388,7 +380,6 @@ a:hover {
   transition: background var(--transition), color var(--transition), border-color var(--transition), transform 0.15s ease;
 }
 
-/* Discover: ghost style — subtle, “nav” feel */
 .header-right .btn-discover {
   background: transparent;
   color: var(--white);
@@ -401,7 +392,6 @@ a:hover {
   border-color: rgba(255, 255, 255, 0.6);
 }
 
-/* My Bookmarks: primary teal */
 .header-right .btn-bookmarks {
   background: var(--warm);
   color: var(--white);
@@ -413,7 +403,6 @@ a:hover {
   color: var(--ink);
 }
 
-/* Add Business: strong CTA, white */
 .header-right .btn-add-biz {
   background: var(--white);
   color: var(--ink);
@@ -425,7 +414,7 @@ a:hover {
   color: var(--white);
 }
 
-/* ========== Hero footer (all pages) ========== */
+/* Footer */
 .hero-footer {
   background: var(--ink);
   color: var(--white);
@@ -490,7 +479,7 @@ a:hover {
   color: var(--white);
 }
 
-/* ========== Typography ========== */
+/* Typography */
 h1, h2, h3 {
   font-weight: var(--weight-heavy);
   color: var(--ink);
@@ -537,7 +526,7 @@ h3 { font-size: var(--text-lg); margin: 0 0 0.35em; }
   font-weight: var(--weight-light);
 }
 
-/* ========== Buttons ========== */
+/* Buttons */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -564,7 +553,6 @@ h3 { font-size: var(--text-lg); margin: 0 0 0.35em; }
   outline-offset: 2px;
 }
 
-/* Warm CTA — "View", "Go Discover", primary actions */
 .btn-warm {
   background: var(--warm);
   color: var(--white);
@@ -575,7 +563,6 @@ h3 { font-size: var(--text-lg); margin: 0 0 0.35em; }
   color: var(--white);
 }
 
-/* View button on cards — subtle teal, doesn’t compete with content */
 .btn-view {
   background: var(--warm-soft);
   color: var(--primary);
@@ -668,7 +655,6 @@ h3 { font-size: var(--text-lg); margin: 0 0 0.35em; }
   vertical-align: -3.3px;
 }
 
-/* ========== Cards — warm accent on hover ========== */
 .card {
   background: var(--white);
   border: 1px solid var(--border);
@@ -740,7 +726,6 @@ h3 { font-size: var(--text-lg); margin: 0 0 0.35em; }
   line-height: 1;
 }
 
-/* Category color coding */
 .pill--food {
   background: rgba(165, 227, 129, 0.35);
   color: #4a8c2e;
@@ -805,7 +790,7 @@ h3 { font-size: var(--text-lg); margin: 0 0 0.35em; }
   margin: 0;
 }
 
-/* ========== Grid ========== */
+/* Grid */
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -854,7 +839,7 @@ h3 { font-size: var(--text-lg); margin: 0 0 0.35em; }
   pointer-events: none;
 }
 
-/* ========== Filter card — warm stripe ========== */
+/* Filter (discover) */
 .filter-card {
   background: var(--bg-paper);
   border: 1px solid var(--border);
@@ -938,7 +923,7 @@ h3 { font-size: var(--text-lg); margin: 0 0 0.35em; }
   flex-shrink: 0;
 }
 
-/* ========== Forms ========== */
+/* Forms */
 .form-card {
   background: var(--white);
   border: 1px solid var(--border);
@@ -1019,7 +1004,7 @@ h3 { font-size: var(--text-lg); margin: 0 0 0.35em; }
   align-items: center;
 }
 
-/* ========== Business detail: main + right sidebar (image) ========== */
+/* Business detail page */
 .business-detail {
   margin-bottom: 32px;
 }
@@ -1071,7 +1056,6 @@ h3 { font-size: var(--text-lg); margin: 0 0 0.35em; }
   background: rgba(255, 255, 255, 0.4);
 }
 
-/* Category tint (subtle): hero, form, placeholder only — lower alpha */
 .business-detail--food .business-hero {
   background: linear-gradient(155deg, rgba(165, 227, 129, 0.08) 0%, rgba(255, 252, 245, 0.98) 40%, var(--bg-paper) 100%);
 }
@@ -1306,7 +1290,6 @@ h3 { font-size: var(--text-lg); margin: 0 0 0.35em; }
   line-height: 1.3;
 }
 
-/* Review & Grab a deal share the same title style */
 .business-section-title--reviews,
 .business-section-title--deals {
   font-size: var(--text-base);
@@ -1474,7 +1457,6 @@ h3 { font-size: var(--text-lg); margin: 0 0 0.35em; }
   color: var(--muted);
 }
 
-/* Legacy detail layout (other pages) — keep for backwards compatibility */
 .detail-row {
   display: grid;
   gap: 24px;
@@ -1660,7 +1642,7 @@ h3 { font-size: var(--text-lg); margin: 0 0 0.35em; }
   font-size: var(--text-lg);
 }
 
-/* ========== Deals — warm accent bar ========== */
+/* Deals */
 .deal-box {
   background: var(--white);
   border: 1px solid var(--border);
@@ -1697,7 +1679,7 @@ h3 { font-size: var(--text-lg); margin: 0 0 0.35em; }
   margin-top: 6px;
 }
 
-/* ========== Reviews ========== */
+/* Reviews */
 .review-box {
   background: var(--white);
   border: 1px solid var(--border);
@@ -1740,7 +1722,7 @@ h3 { font-size: var(--text-lg); margin: 0 0 0.35em; }
   margin-top: 8px;
 }
 
-/* ========== Empty state — warm, friendly ========== */
+/* Empty state */
 .empty-state {
   background: var(--bg-paper);
   border: 1px solid var(--border);
@@ -1770,7 +1752,7 @@ h3 { font-size: var(--text-lg); margin: 0 0 0.35em; }
   margin: 0;
 }
 
-/* ========== Modal ========== */
+/* Modal */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -1939,7 +1921,7 @@ h3 { font-size: var(--text-lg); margin: 0 0 0.35em; }
   margin-top: 8px;
 }
 
-/* ========== Image gallery popup ========== */
+/* Image gallery popup */
 .gallery-overlay {
   position: fixed;
   inset: 0;
@@ -2061,7 +2043,7 @@ h3 { font-size: var(--text-lg); margin: 0 0 0.35em; }
   text-align: center;
 }
 
-/* ========== Back link — simple, friendly ========== */
+/* Back link */
 .back-link {
   color: var(--muted);
   font-size: var(--text-sm);
@@ -2076,7 +2058,7 @@ h3 { font-size: var(--text-lg); margin: 0 0 0.35em; }
   color: var(--ink);
 }
 
-/* ========== Feedback ========== */
+/* Feedback / errors */
 .error {
   color: #b00020;
   font-size: 13px;

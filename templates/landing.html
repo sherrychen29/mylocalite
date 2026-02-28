@@ -2,8 +2,10 @@
 {% block title %}MyLocalite – Support local businesses{% endblock %}
 
 {% block content %}
+<!-- Full-page: optional photo slideshow + hero -->
 <section class="landing-page {% if photos %}landing-page--has-slideshow{% endif %}">
   {% if photos %}
+  <!-- Background photo slideshow (3 rows) -->
   <div class="landing-slideshow" aria-hidden="true">
     <div class="landing-slideshow-row">
       <div class="landing-slideshow-track">
@@ -24,15 +26,21 @@
       </div>
     </div>
   </div>
+  <!-- Teal tint overlay over slideshow -->
   <div class="landing-slideshow-overlay"></div>
   {% endif %}
 
+  <!-- Hero: title, tagline, CTA -->
   <section class="landing-hero">
+    <!-- Brand wordmark -->
     <div class="landing-brand-block">
       <a href="/" class="header-wordmark">MyLocalite</a>
     </div>
+    <!-- Headline -->
     <h1 class="landing-title">Discover &amp; support local businesses</h1>
+    <!-- Tagline -->
     <p class="landing-tagline">Find cafés, shops, and services near you. Save favourites, read reviews, and grab deals.</p>
+    <!-- CTA button -->
     <a href="{{ url_for('discover') }}" class="btn btn-warm landing-cta">Discover businesses</a>
   </section>
 </section>

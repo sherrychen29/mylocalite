@@ -2,17 +2,22 @@
 {% block title %}My Bookmarks | MyLocalite{% endblock %}
 
 {% block content %}
+<!-- Page title -->
 <h1 class="section-title">My Bookmarks</h1>
 
 {% if businesses|length == 0 %}
+<!-- No bookmarks: prompt to discover -->
 <div class="empty-state">
+    <!-- Empty message + CTA -->
     <h2>No bookmarks yet</h2>
     <p>Save businesses from the Discover page to find them here.</p>
     <a href="{{ url_for('discover') }}" class="btn btn-warm">Go Discover</a>
 </div>
 {% else %}
+<!-- Bookmarked business cards -->
 <div class="grid">
     {% for b in businesses %}
+    <!-- Card: name, category, description, address, rating, View + unsave -->
     <article class="card card_{{ b['category']|lower }}">
         <div class="card-top">
             <h2 class="card-title">{{ b["name"] }}</h2>
@@ -63,6 +68,7 @@
 </div>
 
 {% if total_pages > 1 %}
+<!-- Prev / Next pagination -->
 <nav class="pagination" aria-label="Page navigation">
     <div class="pagination-inner">
         {% if page > 1 %}

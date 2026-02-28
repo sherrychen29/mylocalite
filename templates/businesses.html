@@ -2,9 +2,12 @@
 {% block title %}{{ business["name"] }} | MyLocalite{% endblock %}
 
 {% block content %}
+<!-- Back to Discover -->
 <a href="{{ url_for('discover') }}" class="back-link">← Back to Discover</a>
 
+<!-- Single business: hero, deals, reviews -->
 <div class="detail-hero">
+    <!-- Name + category pill -->
     <div class="detail-header">
         <h1 class="detail-title">{{ business["name"] }}</h1>
         <span class="pill pill--{{ business['category']|lower }}">
@@ -13,14 +16,17 @@
         </span>
     </div>
 
+    <!-- Description -->
     <p class="desc" style="line-clamp: unset; -webkit-line-clamp: unset; display: block;">{{ business["description"] }}</p>
 
+    <!-- Address, hours, phone -->
     <ul class="info-list">
         <li><strong>Address</strong> {{ business["address"] }}</li>
         <li><strong>Hours</strong> {{ business["hours"] }}</li>
         <li><strong>Phone</strong> {{ business["phone"] }}</li>
     </ul>
 
+    <!-- Rating + review count -->
     <p class="stats">
         <img
             class="icon-star"
@@ -33,12 +39,14 @@
 
 <hr class="divider">
 
+<!-- Deals section -->
 <section class="section">
     <h2 class="section-title">Deals & Coupons</h2>
     {% if deals|length == 0 %}
     <p class="muted">No active deals right now.</p>
     {% else %}
     {% for d in deals %}
+    <!-- Deal card: title, description, coupon code, expiry -->
     <div class="deal-box">
         <h3 class="deal-title">{{ d["title"] }}</h3>
         <p class="deal-desc">{{ d["description"] }}</p>
@@ -51,12 +59,14 @@
 
 <hr class="divider">
 
+<!-- Reviews section -->
 <section class="section">
     <h2 class="section-title">Reviews</h2>
     {% if reviews|length == 0 %}
     <p class="muted">No reviews yet. Be the first!</p>
     {% else %}
         {% for r in reviews %}
+        <!-- Review: username, rating, time, comment -->
         <div class="review-box">
             <div class="review-head">
                 <strong>{{ r["username"] }}</strong>
@@ -81,6 +91,7 @@
 
 <hr class="divider">
 
+<!-- Leave a review form -->
 <section class="section">
     <h2 class="section-title">Leave a Review</h2>
     <div class="form-card">
