@@ -7,7 +7,7 @@ import random
 import hashlib
 from datetime import datetime, timedelta
 
-# Config
+# Config: paths and app settings
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "data", "locallift.db")
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
@@ -19,19 +19,20 @@ PER_PAGE = CARDS_PER_ROW * ROWS_PER_PAGE
 
 app = Flask(__name__)
 app.secret_key = "wenis"
-app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
+app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8 MB max upload
 RATE_LIMIT_SECONDS = 60
 MAX_COMMENT_LEN = 250
 MAX_USERNAME_LEN = 35
 
 
-# Database init & seed
+# Database init & seed: create tables and insert demo data if empty
 def db_init():
     os.makedirs(os.path.join(BASE_DIR, "data"), exist_ok=True)
 
     conn = get_conn()
     cursor = conn.cursor()
 
+    # Table: businesses (name, category, description, address, hours, phone)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS business (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,6 +45,7 @@ def db_init():
     )
     """)
 
+    # Table: reviews (business_id, username, rating, comment, created_at, is_flagged)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS review (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,6 +58,7 @@ def db_init():
     )
     """)
 
+    # Table: bookmarks (username = anonymous owner id, business_id, created_at)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS bookmark (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -65,6 +68,7 @@ def db_init():
     )
     """)
 
+    # Table: deals (business_id, title, description, coupon_code, expires_at, is_active)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS deal (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -77,6 +81,7 @@ def db_init():
     )
     """)
 
+    # Table: verification_attempt (review verification: question, answer_hash, passed, ip)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS verification_attempt (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,6 +95,7 @@ def db_init():
     )
     """)
 
+    # Table: business_photo (business_id, filename, created_at)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS business_photo (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -104,18 +110,21 @@ def db_init():
     conn.close()
 
 
+# Return a DB connection with WAL mode for better concurrent reads
 def get_conn():
     conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT)
     conn.execute("PRAGMA journal_mode=WAL")
     return conn
 
 
+# Get or create anonymous bookmark owner id (stored in session)
 def get_bookmark_owner_id() -> str:
     if "bookmark_owner_id" not in session:
         session["bookmark_owner_id"] = str(uuid.uuid4())
     return session["bookmark_owner_id"]
 
 
+# Insert demo businesses and deals if DB is empty
 def seed_data():
     conn = get_conn()
     cur = conn.cursor()
@@ -126,6 +135,7 @@ def seed_data():
         conn.close()
         return
 
+    # Demo businesses: Food, Retail, Services
     businesses = [
         ("Maple Moon Café", "Food", "Cozy café with pastries and espresso drinks.", "123 Bloor St W, Toronto, ON M5S 1W7", "8am–6pm", "(416) 555-0101"),
         ("Saffron Street Eats", "Food", "Quick local eats with vegetarian options.", "88 Spadina Ave, Toronto, ON M5V 2J4", "11am–9pm", "(416) 555-0102"),
@@ -148,12 +158,14 @@ def seed_data():
         VALUES (?, ?, ?, ?, ?, ?)
     """, businesses)
 
+    # Helper: get business id by name for linking deals
     def business_id(name: str) -> int:
         cur.execute("SELECT id FROM business WHERE name = ?", (name,))
         row = cur.fetchone()
         return row[0] if row else None
 
     now = datetime.now()
+    # Demo deals linked to specific businesses
     deals = [
         (business_id("Maple Moon Café"), "Student Special", "10% off any drink with student ID.", "STUDENT10", (now + timedelta(days=30)).isoformat(timespec="seconds"), 1),
         (business_id("Local Leaf Bookshop"), "Weekend Deal", "Buy 2 used books, get 1 free.", "B2G1", (now + timedelta(days=14)).isoformat(timespec="seconds"), 1),
@@ -171,6 +183,8 @@ def seed_data():
 
 
 # Data helpers
+
+# Fetch one business by id with avg_rating and review_count
 def fetch_business_by_id(business_id: int):
     conn = get_conn()
     conn.row_factory = sqlite3.Row
@@ -191,6 +205,7 @@ def fetch_business_by_id(business_id: int):
     return row
 
 
+# Fetch active deals for a business, ordered by expiry
 def fetch_active_deals_for_business(business_id: int):
     conn = get_conn()
     conn.row_factory = sqlite3.Row
@@ -209,6 +224,7 @@ def fetch_active_deals_for_business(business_id: int):
     return rows
 
 
+# Fetch all reviews for a business, newest first
 def fetch_reviews_for_business(business_id: int):
     conn = get_conn()
     conn.row_factory = sqlite3.Row
@@ -226,6 +242,7 @@ def fetch_reviews_for_business(business_id: int):
     return rows
 
 
+# Fetch photo filenames for a business; return list of {url} for template
 def fetch_photos_for_business(business_id: int):
     conn = get_conn()
     cur = conn.cursor()
@@ -238,6 +255,7 @@ def fetch_photos_for_business(business_id: int):
     return [{"url": url_for("static", filename=f"uploads/{r[0]}")} for r in rows]
 
 
+# Fetch all photo URLs (for landing slideshow)
 def fetch_all_photo_urls():
     conn = get_conn()
     cur = conn.cursor()
@@ -247,6 +265,7 @@ def fetch_all_photo_urls():
     return [url_for("static", filename=f"uploads/{r[0]}") for r in rows]
 
 
+# True if this owner has bookmarked this business
 def is_bookmarked(owner_id: str, business_id: int) -> bool:
     conn = get_conn()
     cur = conn.cursor()
@@ -260,6 +279,7 @@ def is_bookmarked(owner_id: str, business_id: int) -> bool:
     return row is not None
 
 
+# Add or remove bookmark; returns False if removed, True if added
 def toggle_bookmark(owner_id: str, business_id: int) -> bool:
     conn = get_conn()
     cur = conn.cursor()
@@ -272,11 +292,13 @@ def toggle_bookmark(owner_id: str, business_id: int) -> bool:
     row = cur.fetchone()
 
     if row:
+        # Already bookmarked: remove it
         cur.execute("DELETE FROM bookmark WHERE id = ?", (row[0],))
         conn.commit()
         conn.close()
         return False
     else:
+        # Not bookmarked: add it
         created_at = datetime.now().isoformat(timespec="seconds")
         cur.execute("""
             INSERT INTO bookmark (username, business_id, created_at)
@@ -287,6 +309,7 @@ def toggle_bookmark(owner_id: str, business_id: int) -> bool:
         return True
 
 
+# Fetch all bookmarked businesses for owner with avg_rating and review_count
 def fetch_bookmarks_for_owner(owner_id: str):
     conn = get_conn()
     conn.row_factory = sqlite3.Row
@@ -310,10 +333,12 @@ def fetch_bookmarks_for_owner(owner_id: str):
     return rows
 
 
+# Hash verification answer with salt for secure comparison
 def _hash_answer(salt: str, answer: str) -> str:
     return hashlib.sha256((salt + ":" + answer.strip()).encode("utf-8")).hexdigest()
 
 
+# Client IP for logging (X-Forwarded-For when behind proxy)
 def _get_client_ip() -> str:
     return request.headers.get("X-Forwarded-For", request.remote_addr) or "unknown"
 
@@ -323,9 +348,12 @@ seed_data()
 
 
 # Routes
+
+# Landing page: pass all photos and three shuffled lists for slideshow rows
 @app.route("/")
 def home():
     photos = fetch_all_photo_urls()
+    # Shuffle order per row so each row scrolls differently
     photos_row1 = random.sample(photos, len(photos)) if photos else []
     photos_row2 = random.sample(photos, len(photos)) if photos else []
     photos_row3 = random.sample(photos, len(photos)) if photos else []
@@ -338,7 +366,7 @@ def home():
     )
 
 
-# Discover: list, filter, sort, paginate
+# Discover: list businesses with filter, sort, pagination
 @app.route("/discover")
 def discover():
     category = request.args.get("category", "All")
@@ -356,6 +384,7 @@ def discover():
     conn = get_conn()
     cur = conn.cursor()
 
+    # Build WHERE from category and search
     conditions = []
     params = []
     if category != "All":
@@ -366,6 +395,7 @@ def discover():
         params.extend([f"%{q}%", f"%{q}%"])
     where_sql = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
+    # Total count and pagination bounds
     cur.execute(f"SELECT COUNT(*) FROM business b {where_sql}", params)
     total = cur.fetchone()[0]
     total_pages = max(1, (total + PER_PAGE - 1) // PER_PAGE)
@@ -373,6 +403,7 @@ def discover():
         page = total_pages
     offset = (page - 1) * PER_PAGE
 
+    # Order by name, rating, review count, or id (random uses shuffle later)
     if sort == "name":
         order_sql = "ORDER BY b.name ASC"
     elif sort == "rating":
@@ -383,6 +414,7 @@ def discover():
         order_sql = "ORDER BY b.id ASC"
 
     use_random_shuffle = sort == "random"
+    # Random: fetch all matching rows then shuffle in Python; others: LIMIT/OFFSET
     if use_random_shuffle:
         query = f"""
             SELECT
@@ -413,6 +445,7 @@ def discover():
     rows = cur.fetchall()
     conn.close()
 
+    # Build list of dicts and add bookmarked flag per business
     all_businesses = []
     for row in rows:
         all_businesses.append({
@@ -428,6 +461,7 @@ def discover():
             "bookmarked": is_bookmarked(owner_id, row[0])
         })
 
+    # For random sort: use session cache so page 2+ keeps same order
     if use_random_shuffle:
         shuffle_key = (category, q)
         cached = (
@@ -437,6 +471,7 @@ def discover():
             and len(session["shuffle_order"]) == total
         )
         if cached:
+            # Reorder current page's businesses to match cached shuffle
             id_to_biz = {b["id"]: b for b in all_businesses}
             all_businesses = [id_to_biz[bid] for bid in session["shuffle_order"] if bid in id_to_biz]
         else:
@@ -459,7 +494,7 @@ def discover():
     )
 
 
-# Business detail + deals, reviews, photos
+# Business detail page: one business with deals, reviews, photos, bookmark state
 @app.route("/business/<int:business_id>")
 def business_detail(business_id):
     business = fetch_business_by_id(business_id)
@@ -483,6 +518,7 @@ def business_detail(business_id):
     )
 
 
+# True if filename has an allowed image extension
 def _allowed_image(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
 
@@ -490,7 +526,7 @@ def _allowed_image(filename):
 MAX_UPLOAD_PHOTOS_PER_REQUEST = 5
 
 
-# Upload photos for a business
+# Upload photos for a business; save to static/uploads and insert into business_photo
 @app.route("/business/<int:business_id>/upload_photo", methods=["POST"])
 def upload_business_photo(business_id):
     business = fetch_business_by_id(business_id)
@@ -521,7 +557,7 @@ def upload_business_photo(business_id):
     return redirect(url_for("business_detail", business_id=business_id))
 
 
-# Toggle bookmark (POST)
+# Toggle bookmark (POST); redirect back to referrer or home
 @app.route("/bookmark/toggle", methods=["POST"])
 def bookmark_toggle():
     business_id = request.form.get("business_id", "").strip()
@@ -535,7 +571,7 @@ def bookmark_toggle():
     return redirect(request.referrer or url_for("home"))
 
 
-# Bookmarks list (paginated)
+# Bookmarks list: paginated businesses for current session owner
 @app.route("/bookmarks")
 def bookmarks_page():
     owner_id = get_bookmark_owner_id()
@@ -560,6 +596,7 @@ def bookmarks_page():
         page = total_pages
         offset = (page - 1) * PER_PAGE
 
+    # Join bookmark -> business, attach avg_rating and review_count
     cur.execute("""
         SELECT
             b.*,
@@ -585,7 +622,7 @@ def bookmarks_page():
     )
 
 
-# Review: start verification (math Q), store draft in session
+# Review: validate input, rate-limit, generate math question, store attempt and draft in session
 @app.route("/review/start_verification", methods=["POST"])
 def start_verification():
     data = request.get_json(silent=True) or {}
@@ -594,6 +631,7 @@ def start_verification():
     rating = str(data.get("rating", "")).strip()
     comment = str(data.get("comment", "")).strip()
 
+    # Validate business_id, username, comment length, rating 1-5
     if not business_id.isdigit():
         return jsonify({"ok": False, "error": "Invalid business id."}), 400
 
@@ -616,6 +654,7 @@ def start_verification():
 
     business_id_int = int(business_id)
 
+    # Rate limit: block if user submitted a review recently
     now_ts = int(datetime.now().timestamp())
     last_ts = int(session.get("last_review_ts", 0))
 
@@ -630,6 +669,7 @@ def start_verification():
     session["last_review_ts"] = now_ts
     session.modified = True
 
+    # Generate simple math question and hash the answer
     a = random.randint(2, 12)
     b = random.randint(2, 12)
     question = f"What is {a} + {b}?"
@@ -641,6 +681,7 @@ def start_verification():
     ip = _get_client_ip()
     created_at = datetime.now().isoformat(timespec="seconds")
 
+    # Save verification attempt (passed=0 until user answers correctly)
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("""
@@ -651,6 +692,7 @@ def start_verification():
     conn.commit()
     conn.close()
 
+    # Store review draft in session keyed by attempt_id
     session.setdefault("pending_reviews", {})
     session["pending_reviews"][str(attempt_id)] = {
         "business_id": business_id_int,
@@ -665,7 +707,7 @@ def start_verification():
     return jsonify({"ok": True, "attempt_id": attempt_id, "question": question})
 
 
-# Review: check answer, then insert review
+# Review: verify answer; if correct, insert review and redirect to business page
 @app.route("/review/submit", methods=["POST"])
 def submit_review():
     data = request.get_json(silent=True) or {}
@@ -675,6 +717,7 @@ def submit_review():
     if not attempt_id.isdigit():
         return jsonify({"ok": False, "error": "Invalid attempt id."}), 400
 
+    # Load verification attempt from DB
     conn = get_conn()
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
@@ -692,6 +735,7 @@ def submit_review():
     salt, stored_hash = stored.split("$", 1)
     provided_hash = _hash_answer(salt, answer)
 
+    # Increment try count (max 5)
     session.setdefault("verification_tries", {})
     tries = int(session["verification_tries"].get(attempt_id, 0)) + 1
     session["verification_tries"][attempt_id] = tries
@@ -701,6 +745,7 @@ def submit_review():
     tries_left = max_tries - tries
 
     if provided_hash != stored_hash:
+        # Wrong answer: clear draft if max tries reached
         if tries >= max_tries:
             session.setdefault("pending_reviews", {})
             session["pending_reviews"].pop(attempt_id, None)
@@ -709,12 +754,14 @@ def submit_review():
             return jsonify({"ok": False, "error": "Too many failed attempts. Please try again.", "tries_left": 0})
         return jsonify({"ok": False, "error": "Incorrect answer. Try again.", "tries_left": tries_left})
 
+    # Correct: mark attempt passed in DB
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("UPDATE verification_attempt SET passed = 1 WHERE id = ?", (int(attempt_id),))
     conn.commit()
     conn.close()
 
+    # Get review draft from session and insert into review table
     draft = session.get("pending_reviews", {}).get(attempt_id)
     if not draft:
         return jsonify({"ok": False, "error": "No pending review found. Please re-submit your review."}), 400
@@ -731,6 +778,7 @@ def submit_review():
     conn.commit()
     conn.close()
 
+    # Clear draft and try count from session
     session["pending_reviews"].pop(attempt_id, None)
     session["verification_tries"].pop(attempt_id, None)
     session.modified = True
@@ -738,7 +786,7 @@ def submit_review():
     return jsonify({"ok": True, "redirect": url_for("business_detail", business_id=draft["business_id"])})
 
 
-# Add business (modal form)
+# Add business from modal form; require name, category, address
 @app.route("/admin/add_business", methods=["POST"])
 def admin_add_business():
     name = request.form.get("name", "").strip().title()
