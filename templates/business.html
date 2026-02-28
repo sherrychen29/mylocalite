@@ -195,12 +195,14 @@
 <script type="application/json" id="gallery-urls-data">{{ hero_photos|tojson }}</script>
 <!-- Gallery + upload + review verification scripts -->
 <script>
+    /* Parse gallery photo URLs from embedded JSON (from server) */
     var galleryUrls = (function() {
         var el = document.getElementById('gallery-urls-data');
         if (!el) return [];
         try { return JSON.parse(el.textContent) || []; } catch (e) { return []; }
     })();
 
+    /* Add-image button: trigger file input; on file chosen, submit upload form */
     (function() {
         var addImageBtn = document.getElementById("addImageBtn");
         var imageFileInput = document.getElementById("imageFileInput");
@@ -213,6 +215,7 @@
         }
     })();
 
+    /* Gallery overlay: show image at index, prev/next, close, keyboard */
     (function() {
         var overlay = document.getElementById("galleryOverlay");
         var galleryImage = document.getElementById("galleryImage");
@@ -223,6 +226,7 @@
         var heroImageBtn = document.getElementById("heroImageBtn");
         var currentIndex = 0;
 
+        /** Set gallery popup image and counter to current index */
         function updateGalleryImage() {
             if (!galleryUrls.length) return;
             var item = galleryUrls[currentIndex];
@@ -234,6 +238,7 @@
             galleryCounter.textContent = (currentIndex + 1) + " / " + galleryUrls.length;
         }
 
+        /** Open gallery overlay at given image index */
         function openGallery(index) {
             if (!galleryUrls.length) return;
             currentIndex = (index >= 0 && index < galleryUrls.length) ? index : 0;
@@ -243,6 +248,7 @@
             document.body.style.overflow = "hidden";
         }
 
+        /** Close gallery overlay and restore body scroll */
         function closeGallery() {
             overlay.style.display = "none";
             overlay.setAttribute("aria-hidden", "true");
@@ -287,6 +293,7 @@
     const usernameCharCount = document.getElementById("usernameCharCount");
     const commentCharCount = document.getElementById("commentCharCount");
 
+    /** Update display name and comment character counters (e.g. "0 / 35") */
     function updateCharCounts() {
         if (usernameCharCount) usernameCharCount.textContent = (usernameInput?.value?.length ?? 0) + " / 35";
         if (commentCharCount) commentCharCount.textContent = (commentInput?.value?.length ?? 0) + " / 250";
@@ -305,6 +312,7 @@
 
     let currentAttemptId = null;
 
+    /** Show verification modal with math question and store attempt id */
     function openModal(question, attemptId) {
         currentAttemptId = attemptId;
         qEl.textContent = question;
@@ -316,6 +324,7 @@
         ansEl.focus();
     }
 
+    /** Hide verification modal and clear attempt id */
     function closeModal() {
         overlay.style.display = "none";
         overlay.setAttribute("aria-hidden", "true");
@@ -324,10 +333,12 @@
 
     cancelBtn.addEventListener("click", closeModal);
 
+    /* Close verification modal when clicking overlay backdrop */
     overlay.addEventListener("click", (e) => {
         if (e.target === overlay) closeModal();
     });
 
+    /* On review form submit: POST to start_verification, then show modal with question */
     reviewForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         inlineErr.style.display = "none";
@@ -363,6 +374,7 @@
         }
     });
 
+    /* On verification Submit: POST answer to /review/submit; redirect on success */
     submitBtn.addEventListener("click", async () => {
         errEl.style.display = "none";
         triesEl.style.display = "none";

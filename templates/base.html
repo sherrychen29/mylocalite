@@ -111,6 +111,7 @@
           var closeBtn = document.getElementById("closeAddBiz");
           var cancelBtn = document.getElementById("cancelAddBiz");
 
+          /** Show Add Business modal and focus first input */
           function openModal() {
             if (!overlay) return;
             overlay.style.display = "flex";
@@ -119,12 +120,14 @@
             if (firstInput) firstInput.focus();
           }
 
+          /** Hide Add Business modal */
           function closeModal() {
             if (!overlay) return;
             overlay.style.display = "none";
             overlay.setAttribute("aria-hidden", "true");
           }
 
+          /* Open modal when Add Business button is clicked */
           document.addEventListener("click", function(e) {
             if (e.target && (e.target.id === "openAddBiz" || e.target.closest("#openAddBiz"))) {
               e.preventDefault();
@@ -135,12 +138,14 @@
           if (closeBtn) closeBtn.addEventListener("click", closeModal);
           if (cancelBtn) cancelBtn.addEventListener("click", closeModal);
 
+          /* Close modal when clicking the overlay backdrop */
           if (overlay) {
             overlay.addEventListener("click", function(e) {
               if (e.target === overlay) closeModal();
             });
           }
 
+          /* Close modal on Escape key */
           document.addEventListener("keydown", function(e) {
             if (e.key === "Escape") closeModal();
           });

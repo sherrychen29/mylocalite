@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ business["name"] }} | MyLocalite{% endblock %}
 
+<!-- No script in this template; review form posts to server -->
 {% block content %}
 <!-- Back to Discover -->
 <a href="{{ url_for('discover') }}" class="back-link">← Back to Discover</a>
