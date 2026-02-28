@@ -9,14 +9,18 @@ env/
 *.egg-info/
 .eggs/
 
-# Database (create fresh or keep local)
+# Database 
 data/*.db
 data/*.db-wal
 data/*.db-shm
 
-# Uploads (user-generated)
+# Uploads 
 static/uploads/*
 !static/uploads/.gitkeep
+
+# Fonts (keep only the one used in CSS)
+static/fonts/*
+!static/fonts/TT Interphases Pro Trial Bold.ttf
 
 # IDE / OS
 .idea/
@@ -24,6 +28,3 @@ static/uploads/*
 .DS_Store
 *.sqbpro
 
-# Env (if you add one later)
-.env
-.env.local
