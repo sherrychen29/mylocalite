@@ -9,15 +9,6 @@ env/
 *.egg-info/
 .eggs/
 
-# Database 
-data/*.db
-data/*.db-wal
-data/*.db-shm
-
-# Uploads 
-static/uploads/*
-!static/uploads/.gitkeep
-
 # Fonts (keep only the one used in CSS)
 static/fonts/*
 !static/fonts/TT Interphases Pro Trial Bold.ttf
@@ -27,4 +18,3 @@ static/fonts/*
 .vscode/
 .DS_Store
 *.sqbpro
-
