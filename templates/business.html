@@ -133,7 +133,7 @@
                 </div>
                 {% endif %}
             </div>
-            <!-- Deals list -->
+            <!-- Deals list + Add Coupon -->
             <section class="business-section business-section--deals">
                 <h2 class="business-section-title business-section-title--deals">Grab a deal</h2>
                 {% if deals|length == 0 %}
@@ -152,6 +152,7 @@
                     {% endfor %}
                 </ul>
                 {% endif %}
+                <button type="button" class="btn btn-view btn-add-coupon" id="addCouponBtn" style="margin-top: 8px;">+ Add Coupon</button>
             </section>
         </aside>
     </div>
@@ -169,6 +170,30 @@
             <button type="button" class="gallery-nav gallery-next" id="galleryNext" aria-label="Next image">›</button>
         </div>
         <span class="gallery-counter" id="galleryCounter" aria-live="polite"></span>
+    </div>
+</div>
+
+<!-- Add Coupon modal (shown after verification) -->
+<div id="couponModalOverlay" class="modal-overlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="couponModalTitle">
+        <div class="modal-header">
+            <h3 id="couponModalTitle" class="modal-title">Add Coupon</h3>
+            <button type="button" class="modal-x" id="closeCouponModal" aria-label="Close">✕</button>
+        </div>
+        <form id="couponForm" method="POST" action="{{ url_for('add_coupon', business_id=business['id']) }}" class="modal-form">
+            <label for="couponTitle">Title *</label>
+            <input id="couponTitle" name="title" class="input" placeholder="e.g. 10% off" required>
+            <label for="couponDesc">Description</label>
+            <input id="couponDesc" name="description" class="input" placeholder="e.g. Valid on dine-in only">
+            <label for="couponCode">Coupon code *</label>
+            <input id="couponCode" name="coupon_code" class="input" placeholder="e.g. SAVE10" required>
+            <label for="couponExpiry">Expires (YYYY-MM-DD)</label>
+            <input id="couponExpiry" name="expires_at" class="input" type="date" placeholder="Optional">
+            <div class="modal-actions">
+                <button type="button" id="cancelCouponBtn" class="btn btn-view">Cancel</button>
+                <button type="submit" class="btn">Add</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -202,18 +227,26 @@
         try { return JSON.parse(el.textContent) || []; } catch (e) { return []; }
     })();
 
-    /* Add-image button: trigger file input; on file chosen, submit upload form */
-    (function() {
-        var addImageBtn = document.getElementById("addImageBtn");
-        var imageFileInput = document.getElementById("imageFileInput");
-        var uploadImageForm = document.getElementById("uploadImageForm");
-        if (addImageBtn && imageFileInput && uploadImageForm) {
-            addImageBtn.addEventListener("click", function() { imageFileInput.click(); });
-            imageFileInput.addEventListener("change", function() {
-                if (imageFileInput.files && imageFileInput.files.length > 0) uploadImageForm.submit();
-            });
-        }
-    })();
+    /* Add-image: require verification first, then open file input */
+    var addImageBtn = document.getElementById("addImageBtn");
+    var imageFileInput = document.getElementById("imageFileInput");
+    var uploadImageForm = document.getElementById("uploadImageForm");
+    var businessIdForUpload = "{{ business['id'] }}";
+    if (addImageBtn && imageFileInput && uploadImageForm) {
+        addImageBtn.addEventListener("click", function() {
+            fetch("/review/start_verification", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "upload", business_id: businessIdForUpload })
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.ok) openModal(data.question, data.attempt_id);
+                else alert(data.error || "Could not start verification.");
+            }).catch(function() { alert("Network error."); });
+        });
+        imageFileInput.addEventListener("change", function() {
+            if (imageFileInput.files && imageFileInput.files.length > 0) uploadImageForm.submit();
+        });
+    }
 
     /* Gallery overlay: show image at index, prev/next, close, keyboard */
     (function() {
@@ -346,6 +379,7 @@
 
         const formData = new FormData(reviewForm);
         const payload = {
+            action: "review",
             business_id: formData.get("business_id"),
             username: formData.get("username"),
             rating: formData.get("rating"),
@@ -374,7 +408,7 @@
         }
     });
 
-    /* On verification Submit: POST answer to /review/submit; redirect on success */
+    /* On verification Submit: POST answer; then redirect, open file input, or show coupon form */
     submitBtn.addEventListener("click", async () => {
         errEl.style.display = "none";
         triesEl.style.display = "none";
@@ -404,21 +438,61 @@
             if (!data.ok) {
                 errEl.textContent = data.error || "Verification failed.";
                 errEl.style.display = "block";
-
                 if (typeof data.tries_left !== "undefined") {
-                    triesEl.textContent = `Tries left: ${data.tries_left}`;
+                    triesEl.textContent = "Tries left: " + data.tries_left;
                     triesEl.style.display = "block";
+                }
+                if (data.tries_left === 0) {
+                    closeModal();
                 }
                 return;
             }
 
             closeModal();
-            window.location.href = data.redirect;
-
+            if (data.redirect) {
+                window.location.href = data.redirect;
+            } else if (data.action === "upload" && imageFileInput) {
+                imageFileInput.click();
+            } else if (data.action === "coupon") {
+                var couponOverlay = document.getElementById("couponModalOverlay");
+                if (couponOverlay) {
+                    couponOverlay.style.display = "flex";
+                    couponOverlay.setAttribute("aria-hidden", "false");
+                }
+            }
         } catch (err) {
             errEl.textContent = "Network error. Please try again.";
             errEl.style.display = "block";
         }
+    });
+
+    /* Add Coupon: require verification first, then show coupon form */
+    var addCouponBtn = document.getElementById("addCouponBtn");
+    var couponModalOverlay = document.getElementById("couponModalOverlay");
+    var closeCouponModal = document.getElementById("closeCouponModal");
+    var cancelCouponBtn = document.getElementById("cancelCouponBtn");
+    if (addCouponBtn) {
+        addCouponBtn.addEventListener("click", function() {
+            fetch("/review/start_verification", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "coupon", business_id: "{{ business['id'] }}" })
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.ok) openModal(data.question, data.attempt_id);
+                else alert(data.error || "Could not start verification.");
+            }).catch(function() { alert("Network error."); });
+        });
+    }
+    function closeCouponModalFn() {
+        if (couponModalOverlay) {
+            couponModalOverlay.style.display = "none";
+            couponModalOverlay.setAttribute("aria-hidden", "true");
+        }
+    }
+    if (closeCouponModal) closeCouponModal.addEventListener("click", closeCouponModalFn);
+    if (cancelCouponBtn) cancelCouponBtn.addEventListener("click", closeCouponModalFn);
+    if (couponModalOverlay) couponModalOverlay.addEventListener("click", function(e) {
+        if (e.target === couponModalOverlay) closeCouponModalFn();
     });
 </script>
 {% endblock %}

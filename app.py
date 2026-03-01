@@ -67,6 +67,10 @@ def db_init():
         created_at TEXT
     )
     """)
+    # Index for fast is_bookmarked / toggle_bookmark lookups (avoids O(n^2) on discover)
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_bookmark_owner_business ON bookmark (username, business_id)"
+    )
 
     # Table: deals (business_id, title, description, coupon_code, expires_at, is_active)
     cursor.execute("""
@@ -81,7 +85,7 @@ def db_init():
     )
     """)
 
-    # Table: verification_attempt (review verification: question, answer_hash, passed, ip)
+    # Table: verification_attempt (review/upload/coupon verification: question, answer_hash, action, ip)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS verification_attempt (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,9 +95,14 @@ def db_init():
         answer_hash TEXT,
         passed INTEGER,
         created_at TEXT,
-        ip TEXT
+        ip TEXT,
+        action TEXT
     )
     """)
+    try:
+        cursor.execute("ALTER TABLE verification_attempt ADD COLUMN action TEXT")
+    except sqlite3.OperationalError:
+        pass  # column already exists
 
     # Table: business_photo (business_id, filename, created_at)
     cursor.execute("""
@@ -526,12 +535,23 @@ def _allowed_image(filename):
 MAX_UPLOAD_PHOTOS_PER_REQUEST = 5
 
 
-# Upload photos for a business; save to static/uploads and insert into business_photo
+# Upload photos for a business; requires prior math verification
+VERIFIED_UPLOAD_EXPIRE_SECONDS = 120
+
 @app.route("/business/<int:business_id>/upload_photo", methods=["POST"])
 def upload_business_photo(business_id):
     business = fetch_business_by_id(business_id)
     if business is None:
         return "Business not found", 404
+    verified = session.get("verified_upload") == business_id
+    ts = session.get("verified_upload_ts", 0)
+    if not verified or (int(datetime.now().timestamp()) - ts) > VERIFIED_UPLOAD_EXPIRE_SECONDS:
+        session.pop("verified_upload", None)
+        session.pop("verified_upload_ts", None)
+        return "Please complete verification first (answer the math question).", 403
+    session.pop("verified_upload", None)
+    session.pop("verified_upload_ts", None)
+    session.modified = True
     files = request.files.getlist("image") or request.files.getlist("photo")
     files = [f for f in files if f and f.filename and f.filename.strip()]
     if not files:
@@ -552,6 +572,42 @@ def upload_business_photo(business_id):
             "INSERT INTO business_photo (business_id, filename, created_at) VALUES (?, ?, ?)",
             (business_id, safe_name, now),
         )
+    conn.commit()
+    conn.close()
+    return redirect(url_for("business_detail", business_id=business_id))
+
+
+# Add coupon/deal for a business; requires prior math verification
+VERIFIED_COUPON_EXPIRE_SECONDS = 120
+
+@app.route("/business/<int:business_id>/add_coupon", methods=["POST"])
+def add_coupon(business_id):
+    business = fetch_business_by_id(business_id)
+    if business is None:
+        return "Business not found", 404
+    verified = session.get("verified_coupon") == business_id
+    ts = session.get("verified_coupon_ts", 0)
+    if not verified or (int(datetime.now().timestamp()) - ts) > VERIFIED_COUPON_EXPIRE_SECONDS:
+        session.pop("verified_coupon", None)
+        session.pop("verified_coupon_ts", None)
+        return "Please complete verification first (answer the math question).", 403
+    session.pop("verified_coupon", None)
+    session.pop("verified_coupon_ts", None)
+    session.modified = True
+    title = request.form.get("title", "").strip()
+    description = request.form.get("description", "").strip()
+    coupon_code = request.form.get("coupon_code", "").strip()
+    expires_at = request.form.get("expires_at", "").strip()
+    if not title or not coupon_code:
+        return "Title and coupon code are required.", 400
+    if not expires_at:
+        expires_at = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO deal (business_id, title, description, coupon_code, expires_at, is_active)
+        VALUES (?, ?, ?, ?, ?, 1)
+    """, (business_id, title, description, coupon_code, expires_at))
     conn.commit()
     conn.close()
     return redirect(url_for("business_detail", business_id=business_id))
@@ -622,89 +678,87 @@ def bookmarks_page():
     )
 
 
-# Review: validate input, rate-limit, generate math question, store attempt and draft in session
+# Review/upload/coupon: validate input, rate-limit, generate math question, store attempt (and review draft if action=review)
 @app.route("/review/start_verification", methods=["POST"])
 def start_verification():
     data = request.get_json(silent=True) or {}
+    action = str(data.get("action", "review")).strip().lower() or "review"
+    if action not in ("review", "upload", "coupon"):
+        action = "review"
     business_id = str(data.get("business_id", "")).strip()
     username = str(data.get("username", "")).strip()
     rating = str(data.get("rating", "")).strip()
     comment = str(data.get("comment", "")).strip()
 
-    # Validate business_id, username, comment length, rating 1-5
     if not business_id.isdigit():
         return jsonify({"ok": False, "error": "Invalid business id."}), 400
-
-    if username == "":
-        return jsonify({"ok": False, "error": "Display name cannot be empty."}), 400
-    if len(username) > MAX_USERNAME_LEN:
-        return jsonify({"ok": False, "error": f"Display name too long (max {MAX_USERNAME_LEN} chars)."}), 400
-
-    if comment == "":
-        return jsonify({"ok": False, "error": "Comment cannot be empty."}), 400
-    if len(comment) > MAX_COMMENT_LEN:
-        return jsonify({"ok": False, "error": f"Comment too long (max {MAX_COMMENT_LEN} chars)."}), 400
-
-    try:
-        rating_int = int(rating)
-        if rating_int < 1 or rating_int > 5:
-            return jsonify({"ok": False, "error": "Rating must be 1–5."}), 400
-    except:
-        return jsonify({"ok": False, "error": "Invalid rating."}), 400
-
     business_id_int = int(business_id)
 
-    # Rate limit: block if user submitted a review recently
+    if action == "review":
+        if username == "":
+            return jsonify({"ok": False, "error": "Display name cannot be empty."}), 400
+        if len(username) > MAX_USERNAME_LEN:
+            return jsonify({"ok": False, "error": f"Display name too long (max {MAX_USERNAME_LEN} chars)."}), 400
+        if comment == "":
+            return jsonify({"ok": False, "error": "Comment cannot be empty."}), 400
+        if len(comment) > MAX_COMMENT_LEN:
+            return jsonify({"ok": False, "error": f"Comment too long (max {MAX_COMMENT_LEN} chars)."}), 400
+        try:
+            rating_int = int(rating)
+            if rating_int < 1 or rating_int > 5:
+                return jsonify({"ok": False, "error": "Rating must be 1–5."}), 400
+        except Exception:
+            return jsonify({"ok": False, "error": "Invalid rating."}), 400
+    else:
+        username = ""
+        rating_int = 0
+
+    # Rate limit
     now_ts = int(datetime.now().timestamp())
     last_ts = int(session.get("last_review_ts", 0))
-
     if last_ts and (now_ts - last_ts) < RATE_LIMIT_SECONDS:
         wait = RATE_LIMIT_SECONDS - (now_ts - last_ts)
         return jsonify({
             "ok": False,
-            "error": f"Rate limit: please wait {wait}s before posting another review.",
+            "error": f"Rate limit: please wait {wait}s before trying again.",
             "tries_left": None
         }), 429
 
     session["last_review_ts"] = now_ts
     session.modified = True
 
-    # Generate simple math question and hash the answer
     a = random.randint(2, 12)
     b = random.randint(2, 12)
     question = f"What is {a} + {b}?"
     answer = str(a + b)
-
     salt = uuid.uuid4().hex
     answer_hash = f"{salt}${_hash_answer(salt, answer)}"
-
     ip = _get_client_ip()
     created_at = datetime.now().isoformat(timespec="seconds")
 
-    # Save verification attempt (passed=0 until user answers correctly)
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("""
-        INSERT INTO verification_attempt (username, business_id, question, answer_hash, passed, created_at, ip)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (username, business_id_int, question, answer_hash, 0, created_at, ip))
+        INSERT INTO verification_attempt (username, business_id, question, answer_hash, passed, created_at, ip, action)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (username, business_id_int, question, answer_hash, 0, created_at, ip, action))
     attempt_id = cur.lastrowid
     conn.commit()
     conn.close()
 
-    # Store review draft in session keyed by attempt_id
-    session.setdefault("pending_reviews", {})
-    session["pending_reviews"][str(attempt_id)] = {
-        "business_id": business_id_int,
-        "username": username,
-        "rating": rating_int,
-        "comment": comment
-    }
+    if action == "review":
+        session.setdefault("pending_reviews", {})
+        session["pending_reviews"][str(attempt_id)] = {
+            "business_id": business_id_int,
+            "username": username,
+            "rating": rating_int,
+            "comment": comment
+        }
     session.setdefault("verification_tries", {})
     session["verification_tries"][str(attempt_id)] = 0
     session.modified = True
 
-    return jsonify({"ok": True, "attempt_id": attempt_id, "question": question})
+    return jsonify({"ok": True, "attempt_id": attempt_id, "question": question, "action": action})
 
 
 # Review: verify answer; if correct, insert review and redirect to business page
@@ -754,21 +808,36 @@ def submit_review():
             return jsonify({"ok": False, "error": "Too many failed attempts. Please try again.", "tries_left": 0})
         return jsonify({"ok": False, "error": "Incorrect answer. Try again.", "tries_left": tries_left})
 
-    # Correct: mark attempt passed in DB
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("UPDATE verification_attempt SET passed = 1 WHERE id = ?", (int(attempt_id),))
     conn.commit()
     conn.close()
 
-    # Get review draft from session and insert into review table
+    attempt_action = (attempt.get("action") or "review")
+    bid = int(attempt["business_id"])
+
+    if attempt_action == "upload":
+        session["verified_upload"] = bid
+        session["verified_upload_ts"] = int(datetime.now().timestamp())
+        session["verification_tries"].pop(attempt_id, None)
+        session.modified = True
+        return jsonify({"ok": True, "action": "upload"})
+
+    if attempt_action == "coupon":
+        session["verified_coupon"] = bid
+        session["verified_coupon_ts"] = int(datetime.now().timestamp())
+        session["verification_tries"].pop(attempt_id, None)
+        session.modified = True
+        return jsonify({"ok": True, "action": "coupon"})
+
+    # Review: get draft and insert
     draft = session.get("pending_reviews", {}).get(attempt_id)
     if not draft:
         return jsonify({"ok": False, "error": "No pending review found. Please re-submit your review."}), 400
 
     created_at = datetime.now().isoformat(timespec="seconds")
     is_flagged = 0
-
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("""
@@ -778,7 +847,6 @@ def submit_review():
     conn.commit()
     conn.close()
 
-    # Clear draft and try count from session
     session["pending_reviews"].pop(attempt_id, None)
     session["verification_tries"].pop(attempt_id, None)
     session.modified = True
