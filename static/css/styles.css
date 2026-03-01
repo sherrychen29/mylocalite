@@ -23,8 +23,8 @@
   --radius-tag: 4px;
   --transition: 180ms ease;
 
-  --text-xs: 0.5rem;
-  --text-sm: 0.65rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
   --text-base: 1rem;
   --text-lg: 1.5rem;
   --text-xl: 3rem;
@@ -2043,11 +2043,11 @@ h3 { font-size: var(--text-lg); margin: 0 0 0.35em; }
   text-align: center;
 }
 
-/* Back link */
+/* Back link (same color as pagination Next button) */
 .back-link {
-  color: var(--muted);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-light);
+  color: var(--primary);
+  font-size: 0.9rem;
+  font-weight: var(--weight-heavy);
   text-decoration: none;
   display: inline-block;
   margin-bottom: 20px;

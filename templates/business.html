@@ -454,11 +454,9 @@
             } else if (data.action === "upload" && imageFileInput) {
                 imageFileInput.click();
             } else if (data.action === "coupon") {
-                var couponOverlay = document.getElementById("couponModalOverlay");
-                if (couponOverlay) {
-                    couponOverlay.style.display = "flex";
-                    couponOverlay.setAttribute("aria-hidden", "false");
-                }
+                closeCouponModalFn();
+                var form = document.getElementById("couponForm");
+                if (form) form.submit();
             }
         } catch (err) {
             errEl.textContent = "Network error. Please try again.";
@@ -466,21 +464,18 @@
         }
     });
 
-    /* Add Coupon: require verification first, then show coupon form */
+    /* Add Coupon: open form modal; verification runs when user clicks Add (submit) */
     var addCouponBtn = document.getElementById("addCouponBtn");
     var couponModalOverlay = document.getElementById("couponModalOverlay");
+    var couponForm = document.getElementById("couponForm");
     var closeCouponModal = document.getElementById("closeCouponModal");
     var cancelCouponBtn = document.getElementById("cancelCouponBtn");
     if (addCouponBtn) {
         addCouponBtn.addEventListener("click", function() {
-            fetch("/review/start_verification", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "coupon", business_id: "{{ business['id'] }}" })
-            }).then(function(r) { return r.json(); }).then(function(data) {
-                if (data.ok) openModal(data.question, data.attempt_id);
-                else alert(data.error || "Could not start verification.");
-            }).catch(function() { alert("Network error."); });
+            if (couponModalOverlay) {
+                couponModalOverlay.style.display = "flex";
+                couponModalOverlay.setAttribute("aria-hidden", "false");
+            }
         });
     }
     function closeCouponModalFn() {
@@ -494,5 +489,22 @@
     if (couponModalOverlay) couponModalOverlay.addEventListener("click", function(e) {
         if (e.target === couponModalOverlay) closeCouponModalFn();
     });
+    if (couponForm) {
+        couponForm.addEventListener("submit", function(e) {
+            e.preventDefault();
+            fetch("/review/start_verification", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "coupon", business_id: "{{ business['id'] }}" })
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.ok) {
+                    closeCouponModalFn();
+                    openModal(data.question, data.attempt_id);
+                } else {
+                    alert(data.error || "Could not start verification.");
+                }
+            }).catch(function() { alert("Network error."); });
+        });
+    }
 </script>
 {% endblock %}

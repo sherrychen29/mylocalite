@@ -160,6 +160,7 @@ def seed_data():
         ("GreenGlow Nail Bar", "Services", "Eco-friendly nail salon using non-toxic products.", "250 Bathurst St, Toronto, ON M5T 2S4", "10am–8pm", "(416) 555-0302"),
         ("Sunrise Fitness Studio", "Services", "Small group classes and beginner-friendly training.", "700 Bay St, Toronto, ON M5G 1Z6", "6am–9pm", "(416) 555-0303"),
         ("Neighbour Tech Repair", "Services", "Quick phone/laptop repairs and diagnostics.", "90 Eglinton Ave E, Toronto, ON M4P 2Y3", "10am–6pm", "(416) 555-0304"),
+        ("Dream Bubble Tea", "Food", "Bubble tea, milk tea, and fruit teas in a cozy spot.", "99 Gerrard St E, Toronto, ON M5B 2L8", "11am–9pm", "(416) 555-0105"),
     ]
 
     cur.executemany("""
@@ -167,7 +168,7 @@ def seed_data():
         VALUES (?, ?, ?, ?, ?, ?)
     """, businesses)
 
-    # Helper: get business id by name for linking deals
+    # Helper: get business id by name for linking deals and reviews
     def business_id(name: str) -> int:
         cur.execute("SELECT id FROM business WHERE name = ?", (name,))
         row = cur.fetchone()
@@ -180,12 +181,82 @@ def seed_data():
         (business_id("Local Leaf Bookshop"), "Weekend Deal", "Buy 2 used books, get 1 free.", "B2G1", (now + timedelta(days=14)).isoformat(timespec="seconds"), 1),
         (business_id("GreenGlow Nail Bar"), "First Visit Offer", "15% off your first service.", "WELCOME15", (now + timedelta(days=45)).isoformat(timespec="seconds"), 1),
         (business_id("Neighbour Tech Repair"), "Screen Repair Promo", "$15 off screen repairs this month.", "SCREEN15", (now + timedelta(days=20)).isoformat(timespec="seconds"), 1),
+        (business_id("Dream Bubble Tea"), "March Special", "15% off any large drink.", "BUBBLE15", "2026-03-20", 1),
     ]
 
     cur.executemany("""
         INSERT INTO deal (business_id, title, description, coupon_code, expires_at, is_active)
         VALUES (?, ?, ?, ?, ?, ?)
     """, deals)
+
+    # Reviews: ~70% of businesses (9 of 13) have at least one review
+    created = now.isoformat(timespec="seconds")
+    reviews = [
+        (business_id("Maple Moon Café"), "Jamie", 5, "Love the oat lattes and the vibe.", created, 0),
+        (business_id("Maple Moon Café"), "Sam", 4, "Great pastries, a bit busy on weekends.", created, 0),
+        (business_id("Saffron Street Eats"), "Alex", 5, "Best veggie bowl in the area.", created, 0),
+        (business_id("Harbourview Noodles"), "Jordan", 4, "Noodles are fresh and filling.", created, 0),
+        (business_id("Local Leaf Bookshop"), "Casey", 5, "Found so many local authors here. Staff is lovely.", created, 0),
+        (business_id("North Star Boutique"), "Riley", 4, "Unique finds every time I visit.", created, 0),
+        (business_id("GreenGlow Nail Bar"), "Morgan", 5, "Finally a salon that doesn't smell like chemicals.", created, 0),
+        (business_id("Sunrise Fitness Studio"), "Taylor", 4, "Beginner-friendly and not intimidating.", created, 0),
+        (business_id("Dream Bubble Tea"), "Quinn", 5, "Taro milk tea is amazing. Will be back!", created, 0),
+    ]
+
+    cur.executemany("""
+        INSERT INTO review (business_id, username, rating, comment, created_at, is_flagged)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, reviews)
+
+    conn.commit()
+    conn.close()
+
+
+def _seed_dream_bubble_tea_and_reviews():
+    """Add Dream Bubble Tea (and coupon/review) if missing; ensure ~70% of businesses have a review."""
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("SELECT id FROM business WHERE name = ?", ("Dream Bubble Tea",))
+    row = cur.fetchone()
+    if row is None:
+        cur.execute("""
+            INSERT INTO business (name, category, description, address, hours, phone)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, ("Dream Bubble Tea", "Food", "Bubble tea, milk tea, and fruit teas in a cozy spot.", "99 Gerrard St E, Toronto, ON M5B 2L8", "11am–9pm", "(416) 555-0105"))
+        bid = cur.lastrowid
+        cur.execute("""
+            INSERT INTO review (business_id, username, rating, comment, created_at, is_flagged)
+            VALUES (?, ?, ?, ?, ?, 0)
+        """, (bid, "Quinn", 5, "Taro milk tea is amazing. Will be back!", datetime.now().isoformat(timespec="seconds"),))
+    else:
+        bid = row[0]
+
+    # Ensure Dream Bubble Tea has the March Special coupon (add if missing)
+    cur.execute("SELECT id FROM deal WHERE business_id = ? AND coupon_code = ?", (bid, "BUBBLE15"))
+    if cur.fetchone() is None:
+        cur.execute("""
+            INSERT INTO deal (business_id, title, description, coupon_code, expires_at, is_active)
+            VALUES (?, ?, ?, ?, ?, 1)
+        """, (bid, "March Special", "15% off any large drink.", "BUBBLE15", "2026-03-20",))
+
+    cur.execute("SELECT COUNT(*) FROM business")
+    total = cur.fetchone()[0]
+    cur.execute("SELECT COUNT(DISTINCT business_id) FROM review")
+    with_review = cur.fetchone()[0]
+    need = max(0, int(total * 0.7 + 0.5) - with_review)
+    if need > 0:
+        cur.execute("""
+            SELECT b.id FROM business b
+            LEFT JOIN review r ON r.business_id = b.id
+            WHERE r.id IS NULL
+            LIMIT ?
+        """, (need,))
+        for (bid,) in cur.fetchall():
+            cur.execute("""
+                INSERT INTO review (business_id, username, rating, comment, created_at, is_flagged)
+                VALUES (?, ?, ?, ?, ?, 0)
+            """, (bid, "Local Fan", 4, "Great spot, happy to support local.", datetime.now().isoformat(timespec="seconds"),))
 
     conn.commit()
     conn.close()
@@ -354,6 +425,7 @@ def _get_client_ip() -> str:
 
 db_init()
 seed_data()
+_seed_dream_bubble_tea_and_reviews()
 
 
 # Routes
@@ -814,7 +886,10 @@ def submit_review():
     conn.commit()
     conn.close()
 
-    attempt_action = (attempt.get("action") or "review")
+    try:
+        attempt_action = (attempt["action"] or "review")
+    except (KeyError, TypeError, IndexError):
+        attempt_action = "review"
     bid = int(attempt["business_id"])
 
     if attempt_action == "upload":
